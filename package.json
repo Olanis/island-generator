@@ -1,0 +1,19 @@
+{
+  "name": "island-generator",
+  "version": "1.0.0",
+  "description": "A basic 3D island generator using Three.js",
+  "main": "index.html",
+  "scripts": {
+    "dev": "npx serve .",
+    "start": "npx serve ."
+  },
+  "keywords": ["three.js", "island", "generator", "3d"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "three": "^0.160.0"
+  },
+  "devDependencies": {
+    "serve": "^14.2.1"
+  }
+}
