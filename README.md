@@ -31,6 +31,15 @@ pip install -r requirements.txt
 
 ## Usage
 
+### Preview Terrain
+
+Before generating a full 3D model, you can preview the terrain using ASCII art:
+```bash
+python preview.py --seed 42
+```
+
+This gives you a quick view of the island layout without generating the full OBJ file.
+
 ### Basic Usage
 
 Generate an island with default settings:
