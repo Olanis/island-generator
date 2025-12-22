@@ -109,7 +109,10 @@ class IslandGenerator:
                 height_val = self.terrain[y][x]
                 
                 # Calculate vertex position
-                z = height_val if height_val > self.sea_level else self.sea_level - self.sea_depth
+                if height_val > self.sea_level:
+                    z = height_val
+                else:
+                    z = self.sea_level - self.sea_depth
                 
                 vertex = (x, z, y)
                 self.vertices.append(vertex)
