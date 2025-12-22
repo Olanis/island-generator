@@ -63,29 +63,14 @@ class IslandGenerator {
         // Add fog for depth perception
         this.scene.fog = new THREE.Fog(0x87CEEB, 100, 500);
 
-        // Create ocean floor (seafloor)
-        const seafloorSize = 3000;
-        const seafloorGeometry = new THREE.PlaneGeometry(seafloorSize, seafloorSize, 50, 50);
-        const seafloorMaterial = new THREE.MeshPhongMaterial({
-            color: 0x8B7355, // Brown/sandy seafloor color
-            flatShading: false
-        });
-        const seafloor = new THREE.Mesh(seafloorGeometry, seafloorMaterial);
-        seafloor.rotation.x = -Math.PI / 2;
-        seafloor.position.y = -20; // 20 meters below water surface
-        seafloor.receiveShadow = true;
-        this.scene.add(seafloor);
-
-        // Create water volume (transparent water body)
-        const waterSurfaceSize = 3000;
+        // Create simple blue water plane
+        const waterSurfaceSize = 5000; // Very large to cover everything
         const waterGeometry = new THREE.PlaneGeometry(waterSurfaceSize, waterSurfaceSize, 100, 100);
         const waterMaterial = new THREE.MeshPhongMaterial({
-            color: 0x1E88E5,
-            transparent: true,
-            opacity: 0.6, // More transparent to see through to seafloor
+            color: 0x1E88E5, // Blue water
+            transparent: false,
             shininess: 100,
-            flatShading: false,
-            side: THREE.DoubleSide
+            flatShading: false
         });
         this.water = new THREE.Mesh(waterGeometry, waterMaterial);
         this.water.rotation.x = -Math.PI / 2;
@@ -208,10 +193,10 @@ class IslandGenerator {
                 height *= 0.7; // Slight shore area
             }
 
-            // Only keep terrain above water level (islands emerge from water)
-            // Don't clamp to 0, let it go slightly negative so islands blend with water
-            if (height < 0.5) {
-                height = 0; // Cut off underwater parts
+            // Islands start above water level - anything below water is set below water surface
+            // This makes islands "float" on the water without visible base geometry
+            if (height < 1.0) {
+                height = -2; // Push underwater parts well below water surface so they're hidden
             }
 
             positions.setY(i, height);
@@ -220,36 +205,52 @@ class IslandGenerator {
         // Update normals for proper lighting
         geometry.computeVertexNormals();
 
-        // Create material with vertex colors - no sand, just grass and rock
+        // Create material with vertex colors - pure grass islands
         const colors = new Float32Array(positions.count * 3);
+        const alphas = new Float32Array(positions.count); // For transparency
+        
         for (let i = 0; i < positions.count; i++) {
             const height = positions.getY(i);
-            const heightRatio = height / maxHeight;
-            let color;
-
-            // Game-like colors - no sand, islands are purely grass/vegetation
-            if (heightRatio < 0.4) {
-                // Lower areas - bright grass (starts right above water)
-                color = new THREE.Color(0x4CAF50);
-            } else if (heightRatio < 0.75) {
-                // Mid-level - darker grass
-                color = new THREE.Color(0x388E3C);
+            
+            // Make underwater vertices invisible
+            if (height < 0) {
+                alphas[i] = 0; // Fully transparent
+                colors[i * 3] = 0;
+                colors[i * 3 + 1] = 0;
+                colors[i * 3 + 2] = 0;
             } else {
-                // Rocky peaks
-                color = new THREE.Color(0x8D6E63);
-            }
+                alphas[i] = 1; // Fully visible
+                const heightRatio = height / maxHeight;
+                let color;
 
-            colors[i * 3] = color.r;
-            colors[i * 3 + 1] = color.g;
-            colors[i * 3 + 2] = color.b;
+                // Game-like colors - pure grass/vegetation
+                if (heightRatio < 0.4) {
+                    // Lower areas - bright grass
+                    color = new THREE.Color(0x4CAF50);
+                } else if (heightRatio < 0.75) {
+                    // Mid-level - darker grass
+                    color = new THREE.Color(0x388E3C);
+                } else {
+                    // Rocky peaks
+                    color = new THREE.Color(0x8D6E63);
+                }
+
+                colors[i * 3] = color.r;
+                colors[i * 3 + 1] = color.g;
+                colors[i * 3 + 2] = color.b;
+            }
         }
 
         geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+        geometry.setAttribute('alpha', new THREE.BufferAttribute(alphas, 1));
 
         const material = new THREE.MeshPhongMaterial({
             vertexColors: true,
+            transparent: true,
+            opacity: 1.0,
             flatShading: false,
-            shininess: 30
+            shininess: 30,
+            side: THREE.DoubleSide
         });
 
         const mesh = new THREE.Mesh(geometry, material);
