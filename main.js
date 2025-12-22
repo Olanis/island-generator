@@ -31,11 +31,17 @@ class IslandGenerator {
         );
         this.camera.position.set(50, 50, 50);
 
-        // Create renderer
+        // Create renderer with high quality settings
         const canvas = document.getElementById('canvas');
-        this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+        this.renderer = new THREE.WebGLRenderer({ 
+            canvas, 
+            antialias: true,
+            powerPreference: 'high-performance'
+        });
         this.renderer.setSize(window.innerWidth, window.innerHeight);
+        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // High DPI support
         this.renderer.shadowMap.enabled = true;
+        this.renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Softer shadows
 
         // Add orbit controls
         this.controls = new OrbitControls(this.camera, this.renderer.domElement);
@@ -54,19 +60,27 @@ class IslandGenerator {
         directionalLight.castShadow = true;
         this.scene.add(directionalLight);
 
-        // Add water plane (larger to accommodate bigger islands)
-        const waterGeometry = new THREE.PlaneGeometry(600, 600);
+        // Add fog for depth perception
+        this.scene.fog = new THREE.Fog(0x87CEEB, 100, 500);
+
+        // Create animated water
+        const waterGeometry = new THREE.PlaneGeometry(2000, 2000, 100, 100);
         const waterMaterial = new THREE.MeshPhongMaterial({
-            color: 0x1E88E5, // More vibrant blue (Wind Waker style)
+            color: 0x1E88E5,
             transparent: true,
-            opacity: 0.7,
-            shininess: 100
+            opacity: 0.8,
+            shininess: 100,
+            flatShading: false,
+            side: THREE.DoubleSide
         });
-        const water = new THREE.Mesh(waterGeometry, waterMaterial);
-        water.rotation.x = -Math.PI / 2;
-        water.position.y = 0;
-        water.receiveShadow = true;
-        this.scene.add(water);
+        this.water = new THREE.Mesh(waterGeometry, waterMaterial);
+        this.water.rotation.x = -Math.PI / 2;
+        this.water.position.y = -0.5; // Slightly below y=0 to avoid z-fighting
+        this.water.receiveShadow = true;
+        this.scene.add(this.water);
+
+        // Store water vertices for animation
+        this.waterVertices = this.water.geometry.attributes.position;
 
         // Handle window resize
         window.addEventListener('resize', () => this.onWindowResize(), false);
@@ -102,8 +116,8 @@ class IslandGenerator {
             size = 120 + Math.random() * 130; // Large islands
         }
 
-        // Higher resolution for more detail and smoother terrain
-        const resolution = Math.floor(size * 2); // 2 vertices per unit
+        // Higher resolution for game-quality detail (4-6 vertices per unit)
+        const resolution = Math.floor(size * 5); // Increased from 2 to 5 for much smoother terrain
         const maxHeight = size * 0.15; // Height scales with size, but relatively flatter
 
         // Create islands array
@@ -117,7 +131,7 @@ class IslandGenerator {
         const satelliteCount = Math.random() < 0.4 ? Math.floor(Math.random() * 3) + 1 : 0;
         for (let i = 0; i < satelliteCount; i++) {
             const satelliteSize = size * (0.15 + Math.random() * 0.25); // 15-40% of main island
-            const satelliteResolution = Math.floor(satelliteSize * 2);
+            const satelliteResolution = Math.floor(satelliteSize * 5); // Match main island resolution
             const satelliteHeight = satelliteSize * 0.12;
             
             // Position satellites around main island
@@ -247,6 +261,20 @@ class IslandGenerator {
 
     animate() {
         requestAnimationFrame(() => this.animate());
+        
+        // Animate water surface for realistic effect
+        if (this.water && this.waterVertices) {
+            const time = Date.now() * 0.0005;
+            for (let i = 0; i < this.waterVertices.count; i++) {
+                const x = this.waterVertices.getX(i);
+                const z = this.waterVertices.getZ(i);
+                const wave = Math.sin(x * 0.05 + time) * Math.cos(z * 0.05 + time) * 0.3;
+                this.waterVertices.setY(i, wave);
+            }
+            this.waterVertices.needsUpdate = true;
+            this.water.geometry.computeVertexNormals();
+        }
+        
         this.controls.update();
         this.renderer.render(this.scene, this.camera);
     }
