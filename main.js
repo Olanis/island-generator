@@ -164,98 +164,79 @@ class IslandGenerator {
             // Calculate distance from center (for island shape)
             const distanceFromCenter = Math.sqrt(nx * nx + nz * nz);
             
-            // Multiple octaves of noise for detail, but less aggressive
+            // Multiple octaves of noise for detail
             let height = 0;
             let amplitude = 1;
-            let frequency = 0.8; // Lower frequency for smoother, less rugged terrain
+            let frequency = 0.8;
             
-            for (let octave = 0; octave < 3; octave++) { // Reduced octaves for flatter terrain
+            for (let octave = 0; octave < 3; octave++) {
                 const sampleX = nx * frequency * 3;
                 const sampleZ = nz * frequency * 3;
                 height += this.noiseGenerator.noise2D(sampleX, sampleZ) * amplitude;
-                amplitude *= 0.6; // Less dramatic height variation
+                amplitude *= 0.6;
                 frequency *= 1.8;
             }
 
-            // Apply island mask with smoother falloff for more playable edges
+            // Apply island mask
             const islandMask = Math.max(0, 1 - Math.pow(distanceFromCenter * 1.3, 2.5));
             height *= islandMask;
 
-            // Add some flatter plateaus for playable areas (Wind Waker style)
+            // Add plateaus
             const plateau = Math.abs(height) < 0.3 ? 0.25 : 1.0;
             height *= plateau;
 
-            // Scale height - much flatter than before
+            // Scale height
             height *= maxHeight;
 
-            // Beach areas - no special flattening, just natural terrain
+            // Smooth shore transition
             if (height < maxHeight * 0.08) {
-                height *= 0.7; // Slight shore area
+                height *= 0.7;
             }
 
-            // Islands start above water level - anything below water is set below water surface
-            // This makes islands "float" on the water without visible base geometry
-            if (height < 1.0) {
-                height = -2; // Push underwater parts well below water surface so they're hidden
-            }
+            // Keep only above-water terrain
+            // Start islands at water level (y=0) and go up
+            height = Math.max(height, 0);
 
             positions.setY(i, height);
         }
 
-        // Update normals for proper lighting
+        // Update normals
         geometry.computeVertexNormals();
 
-        // Create material with vertex colors - pure grass islands
+        // Create vertex colors - pure grass
         const colors = new Float32Array(positions.count * 3);
-        const alphas = new Float32Array(positions.count); // For transparency
         
         for (let i = 0; i < positions.count; i++) {
             const height = positions.getY(i);
-            
-            // Make underwater vertices invisible
-            if (height < 0) {
-                alphas[i] = 0; // Fully transparent
-                colors[i * 3] = 0;
-                colors[i * 3 + 1] = 0;
-                colors[i * 3 + 2] = 0;
+            const heightRatio = height / maxHeight;
+            let color;
+
+            // Grass colors
+            if (heightRatio < 0.4) {
+                color = new THREE.Color(0x4CAF50); // Bright grass
+            } else if (heightRatio < 0.75) {
+                color = new THREE.Color(0x388E3C); // Dark grass
             } else {
-                alphas[i] = 1; // Fully visible
-                const heightRatio = height / maxHeight;
-                let color;
-
-                // Game-like colors - pure grass/vegetation
-                if (heightRatio < 0.4) {
-                    // Lower areas - bright grass
-                    color = new THREE.Color(0x4CAF50);
-                } else if (heightRatio < 0.75) {
-                    // Mid-level - darker grass
-                    color = new THREE.Color(0x388E3C);
-                } else {
-                    // Rocky peaks
-                    color = new THREE.Color(0x8D6E63);
-                }
-
-                colors[i * 3] = color.r;
-                colors[i * 3 + 1] = color.g;
-                colors[i * 3 + 2] = color.b;
+                color = new THREE.Color(0x8D6E63); // Rocky peaks
             }
+
+            colors[i * 3] = color.r;
+            colors[i * 3 + 1] = color.g;
+            colors[i * 3 + 2] = color.b;
         }
 
         geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-        geometry.setAttribute('alpha', new THREE.BufferAttribute(alphas, 1));
 
         const material = new THREE.MeshPhongMaterial({
             vertexColors: true,
-            transparent: true,
-            opacity: 1.0,
             flatShading: false,
-            shininess: 30,
-            side: THREE.DoubleSide
+            shininess: 30
         });
 
         const mesh = new THREE.Mesh(geometry, material);
         mesh.position.x = offsetX;
         mesh.position.z = offsetZ;
+        mesh.position.y = 0.1; // Slightly above water to avoid z-fighting
         mesh.castShadow = true;
         mesh.receiveShadow = true;
         this.scene.add(mesh);
