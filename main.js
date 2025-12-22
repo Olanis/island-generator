@@ -63,19 +63,33 @@ class IslandGenerator {
         // Add fog for depth perception
         this.scene.fog = new THREE.Fog(0x87CEEB, 100, 500);
 
-        // Create animated water
-        const waterGeometry = new THREE.PlaneGeometry(2000, 2000, 100, 100);
+        // Create ocean floor (seafloor)
+        const seafloorSize = 3000;
+        const seafloorGeometry = new THREE.PlaneGeometry(seafloorSize, seafloorSize, 50, 50);
+        const seafloorMaterial = new THREE.MeshPhongMaterial({
+            color: 0x8B7355, // Brown/sandy seafloor color
+            flatShading: false
+        });
+        const seafloor = new THREE.Mesh(seafloorGeometry, seafloorMaterial);
+        seafloor.rotation.x = -Math.PI / 2;
+        seafloor.position.y = -20; // 20 meters below water surface
+        seafloor.receiveShadow = true;
+        this.scene.add(seafloor);
+
+        // Create water volume (transparent water body)
+        const waterSurfaceSize = 3000;
+        const waterGeometry = new THREE.PlaneGeometry(waterSurfaceSize, waterSurfaceSize, 100, 100);
         const waterMaterial = new THREE.MeshPhongMaterial({
             color: 0x1E88E5,
             transparent: true,
-            opacity: 0.8,
+            opacity: 0.6, // More transparent to see through to seafloor
             shininess: 100,
             flatShading: false,
             side: THREE.DoubleSide
         });
         this.water = new THREE.Mesh(waterGeometry, waterMaterial);
         this.water.rotation.x = -Math.PI / 2;
-        this.water.position.y = -0.5; // Slightly below y=0 to avoid z-fighting
+        this.water.position.y = 0; // Water surface at y=0
         this.water.receiveShadow = true;
         this.scene.add(this.water);
 
@@ -189,13 +203,16 @@ class IslandGenerator {
             // Scale height - much flatter than before
             height *= maxHeight;
 
-            // Create beaches - gradual slope near water
-            if (height < maxHeight * 0.15) {
-                height *= 0.5; // Flatten beaches
+            // Beach areas - no special flattening, just natural terrain
+            if (height < maxHeight * 0.08) {
+                height *= 0.7; // Slight shore area
             }
 
-            // Clamp below water level
-            height = Math.max(height, 0);
+            // Only keep terrain above water level (islands emerge from water)
+            // Don't clamp to 0, let it go slightly negative so islands blend with water
+            if (height < 0.5) {
+                height = 0; // Cut off underwater parts
+            }
 
             positions.setY(i, height);
         }
@@ -203,22 +220,19 @@ class IslandGenerator {
         // Update normals for proper lighting
         geometry.computeVertexNormals();
 
-        // Create material with vertex colors based on height
+        // Create material with vertex colors - no sand, just grass and rock
         const colors = new Float32Array(positions.count * 3);
         for (let i = 0; i < positions.count; i++) {
             const height = positions.getY(i);
             const heightRatio = height / maxHeight;
             let color;
 
-            // More vibrant, game-like colors (Wind Waker inspired)
-            if (heightRatio < 0.15) {
-                // Sand/Beach
-                color = new THREE.Color(0xE8D4A0);
-            } else if (heightRatio < 0.5) {
-                // Grass - vibrant green
+            // Game-like colors - no sand, islands are purely grass/vegetation
+            if (heightRatio < 0.4) {
+                // Lower areas - bright grass (starts right above water)
                 color = new THREE.Color(0x4CAF50);
             } else if (heightRatio < 0.75) {
-                // Dark grass
+                // Mid-level - darker grass
                 color = new THREE.Color(0x388E3C);
             } else {
                 // Rocky peaks
