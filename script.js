@@ -121,12 +121,12 @@ function createMVPMatrix(rotationY = 0) {
         0, 0, near * far * rangeInv * 2, 0
     ];
 
-    // View (camera at (2,2,2) looking at (0,0,0))
+    // View (camera at (0,0,5) looking at (0,0,0))
     const view = [
         1, 0, 0, 0,
         0, 1, 0, 0,
         0, 0, 1, 0,
-        -2, -2, -2, 1
+        0, 0, -5, 1
     ];
 
     // Model (rotation around Y)
@@ -140,7 +140,6 @@ function createMVPMatrix(rotationY = 0) {
     ];
 
     // MVP = proj * view * model
-    // Simple multiply for demo
     const mvp = multiplyMatrices(multiplyMatrices(proj, view), model);
     return mvp;
 }
@@ -210,4 +209,4 @@ function generateIsland() {
 document.getElementById('generateBtn').addEventListener('click', generateIsland);
 
 // Initial Insel
-generateIsland();
+render(0);
