@@ -1,213 +1,105 @@
-const container = document.getElementById('container');
-const canvas = document.createElement('canvas');
-canvas.width = 800;
-canvas.height = 600;
-container.appendChild(canvas);
-const context = canvas.getContext('webgpu');
+// Insel-Generator mit Three.js (WebGL)
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.module.js';
 
-// Debugging: Stellen wir sicher, dass WebGPU verfügbar ist
-if (!context) {
-    console.error("WebGPU Context konnte nicht erstellt werden! Ist Brave dafür geeignet?");
-} else {
-    console.log("WebGPU Context erfolgreich erstellt!");
-}
+let scene, camera, renderer, islandMesh;
 
-const device = await (async () => {
-    if (!navigator.gpu) {
-        document.getElementById('rendererInfo').textContent = 'Renderer: WebGL';
-        throw new Error('WebGPU not supported');
-    }
-    const adapter = await navigator.gpu.requestAdapter();
-    const device = await adapter.requestDevice();
-    document.getElementById('rendererInfo').textContent = 'Renderer: WebGPU';
-    return device;
-})();
+function init() {
+    console.log("DEBUG: init() aufgerufen – Three.js Setup starten.");
 
-context.configure({
-    device,
-    format: navigator.gpu.getPreferredCanvasFormat(),
-    alphaMode: 'premultiplied',
-});
+    // Szene, Kamera, Renderer erstellen
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x87ceeb); // Himmelblau für Meer-Hintergrund
 
-const vertexShaderCode = `
-@group(0) @binding(0) var<uniform> mvp: mat4x4<f32>;
+    camera = new THREE.PerspectiveCamera(75, 800 / 600, 0.1, 1000);
+    camera.position.set(3, 3, 3);
+    camera.lookAt(0, 0, 0);
 
-@vertex
-fn vertexMain(@location(0) position: vec3<f32>) -> @builtin(position) vec4<f32> {
-    return mvp * vec4<f32>(position, 1.0);
-}
-`;
+    renderer = new THREE.WebGLRenderer();
+    renderer.setSize(800, 600);
+    document.getElementById('container').appendChild(renderer.domElement);
 
-const fragmentShaderCode = `
-// Debugging: Zeichnet rot, damit wir sehen können, ob Shader Fehler haben
-@fragment
-fn fragmentMain() -> @location(0) vec4<f32> {
-    return vec4<f32>(1.0, 0.0, 0.0, 1.0); // Einfaches Rot für Debugging
-}
-`;
+    console.log("DEBUG: Szene, Kamera und Renderer erstellt.");
 
-const shaderModule = device.createShaderModule({
-    code: vertexShaderCode + fragmentShaderCode,
-});
+    // Beleuchtung hinzufügen
+    const light = new THREE.DirectionalLight(0xffffff, 1);
+    light.position.set(1, 1, 1).normalize();
+    scene.add(light);
 
-const vertexBuffer = device.createBuffer({
-    size: 6 * 3 * 4, // 6 vertices, 3 floats per vertex, 4 bytes per float
-    usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
-});
+    console.log("DEBUG: Beleuchtung hinzugefügt.");
 
-const uniformBuffer = device.createBuffer({
-    size: 16 * 4, // 16 floats for mat4
-    usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-});
+    // Button-Event hinzufügen
+    document.getElementById('generateBtn').addEventListener('click', generateIsland);
+    console.log("DEBUG: Button-Event gebunden.");
 
-const bindGroupLayout = device.createBindGroupLayout({
-    entries: [{
-        binding: 0,
-        visibility: GPUShaderStage.VERTEX,
-        buffer: { type: 'uniform' },
-    }],
-});
-
-const bindGroup = device.createBindGroup({
-    layout: bindGroupLayout,
-    entries: [{
-        binding: 0,
-        resource: { buffer: uniformBuffer },
-    }],
-});
-
-// Pipeline-Fehler abfangen
-let pipeline;
-try {
-    pipeline = device.createRenderPipeline({
-        layout: device.createPipelineLayout({
-            bindGroupLayouts: [bindGroupLayout],
-        }),
-        vertex: {
-            module: shaderModule,
-            entryPoint: 'vertexMain',
-            buffers: [{
-                arrayStride: 12, // 3 floats * 4 bytes
-                attributes: [{
-                    shaderLocation: 0,
-                    offset: 0,
-                    format: 'float32x3',
-                }],
-            }],
-        },
-        fragment: {
-            module: shaderModule,
-            entryPoint: 'fragmentMain',
-            targets: [{ format: navigator.gpu.getPreferredCanvasFormat() }],
-        },
-        primitive: {
-            topology: 'triangle-list',
-        },
-    });
-} catch (error) {
-    console.error('Pipeline Error:', error);
-}
-
-function createMVPMatrix(rotationY = 0) {
-    const aspect = 800 / 600;
-    const fov = Math.PI / 4;
-    const near = 0.1;
-    const far = 100;
-    const f = 1 / Math.tan(fov / 2);
-    const rangeInv = 1 / (near - far);
-
-    // Projection
-    const proj = [
-        f / aspect, 0, 0, 0,
-        0, f, 0, 0,
-        0, 0, (near + far) * rangeInv, -1,
-        0, 0, near * far * rangeInv * 2, 0
-    ];
-
-    // View (camera at (0,0,2) looking at (0,0,0))
-    const view = [
-        1, 0, 0, 0,
-        0, 1, 0, 0,
-        0, 0, 1, 0,
-        0, 0, -2, 1
-    ];
-
-    // Model (rotation around Y)
-    const cos = Math.cos(rotationY);
-    const sin = Math.sin(rotationY);
-    const model = [
-        cos, 0, sin, 0,
-        0, 1, 0, 0,
-        -sin, 0, cos, 0,
-        0, 0, 0, 1
-    ];
-
-    // MVP = proj * view * model
-    const mvp = multiplyMatrices(multiplyMatrices(proj, view), model);
-    return mvp;
-}
-
-function multiplyMatrices(a, b) {
-    const result = new Array(16).fill(0);
-    for (let i = 0; i < 4; i++) {
-        for (let j = 0; j < 4; j++) {
-            for (let k = 0; k < 4; k++) {
-                result[i * 4 + j] += a[i * 4 + k] * b[k * 4 + j];
-            }
-        }
-    }
-    return result;
-}
-
-function render(rotationY = 0) {
-    const mvp = createMVPMatrix(rotationY);
-    device.queue.writeBuffer(uniformBuffer, 0, new Float32Array(mvp));
-
-    const commandEncoder = device.createCommandEncoder();
-    const passEncoder = commandEncoder.beginRenderPass({
-        colorAttachments: [{
-            view: context.getCurrentTexture().createView(),
-            clearValue: { r: 0, g: 0, b: 0, a: 1 },
-            loadOp: 'clear',
-            storeOp: 'store',
-        }],
-    });
-    passEncoder.setPipeline(pipeline);
-    passEncoder.setBindGroup(0, bindGroup);
-    passEncoder.setVertexBuffer(0, vertexBuffer);
-    passEncoder.draw(6);
-    passEncoder.end();
-    device.queue.submit([commandEncoder.finish()]);
+    // Erste Insel generieren
+    generateIsland();
 }
 
 function generateIsland() {
-    const shape = Math.random() < 0.5 ? 'quadrat' : 'rechteck';
-    let vertices;
-    if (shape === 'quadrat') {
-        vertices = new Float32Array([
-            -1, 0, -1,
-            1, 0, -1,
-            1, 0, 1,
-            -1, 0, -1,
-            1, 0, 1,
-            -1, 0, 1
-        ]);
-    } else {
-        vertices = new Float32Array([
-            -2, 0, -1,
-            2, 0, -1,
-            2, 0, 1,
-            -2, 0, -1,
-            2, 0, 1,
-            -2, 0, 1
-        ]);
+    console.log("DEBUG: generateIsland() aufgerufen – Insel generieren.");
+
+    // Alte Insel entfernen, falls vorhanden
+    if (islandMesh) {
+        scene.remove(islandMesh);
+        islandMesh.geometry.dispose();
+        islandMesh.material.dispose();
+        console.log("DEBUG: Alte Insel entfernt.");
     }
-    device.queue.writeBuffer(vertexBuffer, 0, vertices);
-    const rotationY = Math.random() * Math.PI * 2;
-    render(rotationY);
+
+    const shape = Math.random() > 0.5 ? 'quadrat' : 'rechteck';
+    console.log(`DEBUG: Ausgewählte Form: ${shape}`);
+
+    let geometry;
+    if (shape === 'quadrat') {
+        // Quadrat: 1x1, mit zufälliger Höhe
+        const positions = new Float32Array([
+            0, 0, Math.random() * 0.5 + 0.1,  // Ecke 1
+            1, 0, Math.random() * 0.5 + 0.1,  // Ecke 2
+            1, 1, Math.random() * 0.5 + 0.1,  // Ecke 3
+            0, 1, Math.random() * 0.5 + 0.1   // Ecke 4
+        ]);
+        const indices = [0, 1, 2, 0, 2, 3]; // Zwei Dreiecke
+        geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        geometry.setIndex(indices);
+    } else {
+        // Rechteck: 2x1, mit zufälliger Höhe
+        const positions = new Float32Array([
+            0, 0, Math.random() * 0.5 + 0.1,
+            2, 0, Math.random() * 0.5 + 0.1,
+            2, 1, Math.random() * 0.5 + 0.1,
+            0, 1, Math.random() * 0.5 + 0.1
+        ]);
+        const indices = [0, 1, 2, 0, 2, 3];
+        geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        geometry.setIndex(indices);
+    }
+
+    console.log("DEBUG: Geometrie erstellt.");
+
+    // Material und Mesh
+    const material = new THREE.MeshLambertMaterial({ color: 0x228b22 }); // Grün für Insel
+    islandMesh = new THREE.Mesh(geometry, material);
+    scene.add(islandMesh);
+
+    console.log("DEBUG: Insel-Mesh zur Szene hinzugefügt.");
+
+    // Rendern
+    renderer.render(scene, camera);
+    console.log("DEBUG: Szene gerendert.");
 }
 
-document.getElementById('generateBtn').addEventListener('click', generateIsland);
+function animate() {
+    requestAnimationFrame(animate);
+    // Insel leicht drehen für bessere Sicht
+    if (islandMesh) {
+        islandMesh.rotation.y += 0.01;
+    }
+    renderer.render(scene, camera);
+}
 
-// Initial Insel
-generateIsland();
+// Initialisierung starten
+init();
+animate();
+console.log("DEBUG: Script geladen und init/animate gestartet.");
