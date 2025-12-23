@@ -1,7 +1,7 @@
 // Einfacher Insel-Generator mit Three.js (WebGL) – Insel schwimmt halb im Wasser
 // Kein Import nötig, THREE ist global geladen
 
-let scene, camera, renderer, islandMesh, seaMesh, controls, isRotating = true, markerMesh;
+let scene, camera, renderer, islandMesh, seaMesh, controls, isRotating = true, markerMesh, originalMarkerY;
 
 function init() {
     console.log("DEBUG: init() aufgerufen – Three.js Setup starten.");
@@ -43,9 +43,11 @@ function init() {
     document.getElementById('playBtn').addEventListener('click', enterFullscreen);
     console.log("DEBUG: Button-Events gebunden.");
 
-    // ESC für Vollbild-Exit
+    // Tasten-Events
     document.addEventListener('keydown', function(event) {
-        if (event.key === 'Escape') {
+        if (event.key === ' ') { // Leertaste
+            jumpMarker();
+        } else if (event.key === 'Escape') {
             exitFullscreen();
         }
     });
@@ -142,6 +144,7 @@ function handleFullscreenChange() {
             const markerMaterial = new THREE.MeshLambertMaterial({ color: 0xffa500 }); // Orange
             markerMesh = new THREE.Mesh(markerGeometry, markerMaterial);
             markerMesh.position.set(0, 0.6, 0); // Oben auf der Insel-Mitte
+            originalMarkerY = 0.6; // Ursprüngliche Höhe speichern
             scene.add(markerMesh);
             console.log("DEBUG: Oranges Marker-Quadrat hinzugefügt.");
         }
@@ -163,6 +166,17 @@ function handleFullscreenChange() {
         camera.aspect = 800 / 600;
         camera.updateProjectionMatrix();
         console.log("DEBUG: Normale Größe wiederhergestellt: 800x600.");
+    }
+}
+
+function jumpMarker() {
+    if (markerMesh && (document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement)) {
+        console.log("DEBUG: jumpMarker() aufgerufen – Marker springt.");
+        markerMesh.position.y = originalMarkerY + 0.5; // Springen
+        setTimeout(() => {
+            markerMesh.position.y = originalMarkerY; // Zurückfallen
+            console.log("DEBUG: Marker zurückgefallen.");
+        }, 500); // Nach 500ms zurück
     }
 }
 
