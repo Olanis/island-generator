@@ -5,6 +5,13 @@ canvas.height = 600;
 container.appendChild(canvas);
 const context = canvas.getContext('webgpu');
 
+// Debugging: Stellen wir sicher, dass WebGPU verfügbar ist
+if (!context) {
+    console.error("WebGPU Context konnte nicht erstellt werden! Ist Brave dafür geeignet?");
+} else {
+    console.log("WebGPU Context erfolgreich erstellt!");
+}
+
 const device = await (async () => {
     if (!navigator.gpu) {
         document.getElementById('rendererInfo').textContent = 'Renderer: WebGL';
@@ -32,9 +39,10 @@ fn vertexMain(@location(0) position: vec3<f32>) -> @builtin(position) vec4<f32> 
 `;
 
 const fragmentShaderCode = `
+// Debugging: Zeichnet rot, damit wir sehen können, ob Shader Fehler haben
 @fragment
 fn fragmentMain() -> @location(0) vec4<f32> {
-    return vec4<f32>(0.0, 1.0, 0.0, 1.0); // Grün für Insel
+    return vec4<f32>(1.0, 0.0, 0.0, 1.0); // Einfaches Rot für Debugging
 }
 `;
 
@@ -68,31 +76,37 @@ const bindGroup = device.createBindGroup({
     }],
 });
 
-const pipeline = device.createRenderPipeline({
-    layout: device.createPipelineLayout({
-        bindGroupLayouts: [bindGroupLayout],
-    }),
-    vertex: {
-        module: shaderModule,
-        entryPoint: 'vertexMain',
-        buffers: [{
-            arrayStride: 12, // 3 floats * 4 bytes
-            attributes: [{
-                shaderLocation: 0,
-                offset: 0,
-                format: 'float32x3',
+// Pipeline-Fehler abfangen
+let pipeline;
+try {
+    pipeline = device.createRenderPipeline({
+        layout: device.createPipelineLayout({
+            bindGroupLayouts: [bindGroupLayout],
+        }),
+        vertex: {
+            module: shaderModule,
+            entryPoint: 'vertexMain',
+            buffers: [{
+                arrayStride: 12, // 3 floats * 4 bytes
+                attributes: [{
+                    shaderLocation: 0,
+                    offset: 0,
+                    format: 'float32x3',
+                }],
             }],
-        }],
-    },
-    fragment: {
-        module: shaderModule,
-        entryPoint: 'fragmentMain',
-        targets: [{ format: navigator.gpu.getPreferredCanvasFormat() }],
-    },
-    primitive: {
-        topology: 'triangle-list',
-    },
-});
+        },
+        fragment: {
+            module: shaderModule,
+            entryPoint: 'fragmentMain',
+            targets: [{ format: navigator.gpu.getPreferredCanvasFormat() }],
+        },
+        primitive: {
+            topology: 'triangle-list',
+        },
+    });
+} catch (error) {
+    console.error('Pipeline Error:', error);
+}
 
 function createMVPMatrix(rotationY = 0) {
     const aspect = 800 / 600;
