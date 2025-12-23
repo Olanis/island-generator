@@ -92,17 +92,6 @@ const pipeline = device.createRenderPipeline({
     primitive: {
         topology: 'triangle-list',
     },
-    depthStencil: {
-        format: 'depth24plus',
-        depthWriteEnabled: true,
-        depthCompare: 'less',
-    },
-});
-
-const depthTexture = device.createTexture({
-    size: [800, 600],
-    format: 'depth24plus',
-    usage: GPUTextureUsage.RENDER_ATTACHMENT,
 });
 
 function createMVPMatrix(rotationY = 0) {
@@ -168,12 +157,6 @@ function render(rotationY = 0) {
             loadOp: 'clear',
             storeOp: 'store',
         }],
-        depthStencilAttachment: {
-            view: depthTexture.createView(),
-            depthClearValue: 1.0,
-            depthLoadOp: 'clear',
-            depthStoreOp: 'store',
-        },
     });
     passEncoder.setPipeline(pipeline);
     passEncoder.setBindGroup(0, bindGroup);
