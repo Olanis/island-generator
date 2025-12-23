@@ -11,7 +11,7 @@ function init() {
     scene.background = new THREE.Color(0x87ceeb); // Himmelblau für Meer-Hintergrund
 
     camera = new THREE.PerspectiveCamera(75, 800 / 600, 0.1, 1000);
-    camera.position.set(5, 5, 5);
+    camera.position.set(250, 250, 250); // Weiter zurück für große Inseln
     camera.lookAt(0, 0, 0);
 
     renderer = new THREE.WebGLRenderer();
@@ -57,8 +57,8 @@ function init() {
     document.addEventListener('webkitfullscreenchange', handleFullscreenChange); // Safari
     document.addEventListener('msfullscreenchange', handleFullscreenChange); // IE/Edge
 
-    // Meer-Ebene hinzufügen (durchsichtig)
-    const seaGeometry = new THREE.PlaneGeometry(50, 50);
+    // Meer-Ebene hinzufügen (größer für große Inseln)
+    const seaGeometry = new THREE.PlaneGeometry(5000, 5000);
     const seaMaterial = new THREE.MeshLambertMaterial({ 
         color: 0x0077be,  // Dunkelblau für Meer
         transparent: true,  // Durchsichtig machen
@@ -71,7 +71,7 @@ function init() {
 }
 
 function generateIsland() {
-    console.log("DEBUG: generateIsland() aufgerufen – Insel generieren, die halb im Wasser schwimmt.");
+    console.log("DEBUG: generateIsland() aufgerufen – Große Insel generieren, die halb im Wasser schwimmt.");
 
     // Alte Insel entfernen, falls vorhanden
     if (islandMesh) {
@@ -86,13 +86,13 @@ function generateIsland() {
 
     let geometry;
     if (shape === 'quadrat') {
-        // Normaler 3D-Würfel
-        geometry = new THREE.BoxGeometry(1, 1, 1);
-        console.log("DEBUG: Würfel-Geometrie erstellt.");
+        // Großer 3D-Würfel (50x50x50)
+        geometry = new THREE.BoxGeometry(50, 50, 50);
+        console.log("DEBUG: Großer Würfel-Geometrie erstellt.");
     } else {
-        // Dreidimensionales Kästchen/Rechteck (2x1x1)
-        geometry = new THREE.BoxGeometry(2, 1, 1);
-        console.log("DEBUG: Kästchen-Geometrie erstellt.");
+        // Großes dreidimensionales Kästchen/Rechteck (100x50x50)
+        geometry = new THREE.BoxGeometry(100, 50, 50);
+        console.log("DEBUG: Großes Kästchen-Geometrie erstellt.");
     }
 
     // Material und Mesh
@@ -101,7 +101,7 @@ function generateIsland() {
     islandMesh.position.y = 0; // Mitte auf Wasseroberfläche – untere Hälfte unter Wasser
     scene.add(islandMesh);
 
-    console.log("DEBUG: Insel-Mesh zur Szene hinzugefügt (halb im Wasser).");
+    console.log("DEBUG: Große Insel-Mesh zur Szene hinzugefügt (halb im Wasser).");
 
     // Rendern
     renderer.render(scene, camera);
@@ -139,15 +139,15 @@ function handleFullscreenChange() {
         // Im Vollbild: Rotation stoppen und Marker hinzufügen
         isRotating = false;
         if (islandMesh && !markerMesh) {
-            // Kleines oranges Quadrat als Marker
-            const markerGeometry = new THREE.BoxGeometry(0.1, 0.1, 0.05); // Sehr klein
+            // Größeres oranges Quadrat als Marker (relativ zur Insel)
+            const markerGeometry = new THREE.BoxGeometry(5, 5, 2.5); // Größer
             const markerMaterial = new THREE.MeshLambertMaterial({ color: 0xffa500 }); // Orange
             markerMesh = new THREE.Mesh(markerGeometry, markerMaterial);
-            markerMesh.position.set(0, 0.6, 0); // Oben auf der Insel-Mitte
-            originalMarkerY = 0.6; // Ursprüngliche Höhe speichern
+            markerMesh.position.set(0, 30, 0); // Oben auf der Insel-Mitte (angepasst)
+            originalMarkerY = 30; // Ursprüngliche Höhe speichern
             velocityY = 0; // Geschwindigkeit zurücksetzen
             scene.add(markerMesh);
-            console.log("DEBUG: Oranges Marker-Quadrat hinzugefügt.");
+            console.log("DEBUG: Größeres oranges Marker-Quadrat hinzugefügt.");
         }
         renderer.setSize(window.innerWidth, window.innerHeight);
         camera.aspect = window.innerWidth / window.innerHeight;
@@ -161,7 +161,7 @@ function handleFullscreenChange() {
             markerMesh.geometry.dispose();
             markerMesh.material.dispose();
             markerMesh = null;
-            console.log("DEBUG: Oranges Marker-Quadrat entfernt.");
+            console.log("DEBUG: Größeres oranges Marker-Quadrat entfernt.");
         }
         renderer.setSize(800, 600);
         camera.aspect = 800 / 600;
