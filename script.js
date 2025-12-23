@@ -38,9 +38,17 @@ function init() {
 
     console.log("DEBUG: Beleuchtung hinzugefügt.");
 
-    // Button-Event hinzufügen
+    // Button-Events hinzufügen
     document.getElementById('generateBtn').addEventListener('click', generateIsland);
-    console.log("DEBUG: Button-Event gebunden.");
+    document.getElementById('playBtn').addEventListener('click', enterFullscreen);
+    console.log("DEBUG: Button-Events gebunden.");
+
+    // ESC für Vollbild-Exit
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+            exitFullscreen();
+        }
+    });
 
     // Meer-Ebene hinzufügen (durchsichtig)
     const seaGeometry = new THREE.PlaneGeometry(50, 50);
@@ -91,6 +99,31 @@ function generateIsland() {
     // Rendern
     renderer.render(scene, camera);
     console.log("DEBUG: Szene gerendert.");
+}
+
+function enterFullscreen() {
+    console.log("DEBUG: enterFullscreen() aufgerufen – Vollbild aktivieren.");
+    const container = document.getElementById('container');
+    if (container.requestFullscreen) {
+        container.requestFullscreen();
+    } else if (container.webkitRequestFullscreen) { // Safari
+        container.webkitRequestFullscreen();
+    } else if (container.msRequestFullscreen) { // IE/Edge
+        container.msRequestFullscreen();
+    }
+    console.log("DEBUG: Vollbild angefordert.");
+}
+
+function exitFullscreen() {
+    console.log("DEBUG: exitFullscreen() aufgerufen – Vollbild beenden.");
+    if (document.exitFullscreen) {
+        document.exitFullscreen();
+    } else if (document.webkitExitFullscreen) { // Safari
+        document.webkitExitFullscreen();
+    } else if (document.msExitFullscreen) { // IE/Edge
+        document.msExitFullscreen();
+    }
+    console.log("DEBUG: Vollbild beendet.");
 }
 
 function animate() {
