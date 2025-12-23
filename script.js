@@ -1,4 +1,4 @@
-// Insel-Generator mit Three.js (WebGL) – Jetzt mit richtiger 3D-Heightmap
+// Einfacher Insel-Generator mit Three.js (WebGL) – Würfel oder Kästchen
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.module.js';
 
 let scene, camera, renderer, islandMesh, seaMesh, controls;
@@ -46,13 +46,10 @@ function init() {
     seaMesh.rotation.x = -Math.PI / 2; // Flach legen
     scene.add(seaMesh);
     console.log("DEBUG: Meer-Ebene hinzugefügt.");
-
-    // Erste Insel generieren
-    generateIsland();
 }
 
 function generateIsland() {
-    console.log("DEBUG: generateIsland() aufgerufen – 3D-Insel generieren.");
+    console.log("DEBUG: generateIsland() aufgerufen – Einfache 3D-Insel generieren.");
 
     // Alte Insel entfernen, falls vorhanden
     if (islandMesh) {
@@ -65,40 +62,21 @@ function generateIsland() {
     const shape = Math.random() > 0.5 ? 'quadrat' : 'rechteck';
     console.log(`DEBUG: Ausgewählte Form: ${shape}`);
 
-    let width, height, widthSegments, heightSegments;
+    let geometry;
     if (shape === 'quadrat') {
-        width = 10; // Größe der Insel
-        height = 10;
-        widthSegments = 10; // Grid-Auflösung für Heightmap
-        heightSegments = 10;
+        // Normaler 3D-Würfel
+        geometry = new THREE.BoxGeometry(1, 1, 1);
+        console.log("DEBUG: Würfel-Geometrie erstellt.");
     } else {
-        width = 20;
-        height = 10;
-        widthSegments = 20;
-        heightSegments = 10;
+        // Dreidimensionales Kästchen/Rechteck (2x1x1)
+        geometry = new THREE.BoxGeometry(2, 1, 1);
+        console.log("DEBUG: Kästchen-Geometrie erstellt.");
     }
-
-    // PlaneGeometry mit Subdivisionen erstellen
-    const geometry = new THREE.PlaneGeometry(width, height, widthSegments, heightSegments);
-    geometry.rotateX(-Math.PI / 2); // Aufrecht stellen
-
-    // Vertices modifizieren für Heightmap (zufällige Höhen)
-    const positions = geometry.attributes.position.array;
-    for (let i = 0; i < positions.length; i += 3) {
-        const x = positions[i];
-        const y = positions[i + 1];
-        // Zufällige Höhe: Sinus-Welle + Rauschen für Hügel-artig
-        const heightValue = Math.sin(x * 0.5) * Math.cos(y * 0.5) * 2 + Math.random() * 1.5;
-        positions[i + 2] = Math.max(heightValue, 0.1); // Mindesthöhe 0.1, um nicht flach zu sein
-    }
-    geometry.attributes.position.needsUpdate = true;
-    geometry.computeVertexNormals(); // Normals neu berechnen für richtiges Lighting
-
-    console.log("DEBUG: Heightmap-Geometrie erstellt mit zufälligen Höhen.");
 
     // Material und Mesh
     const material = new THREE.MeshLambertMaterial({ color: 0x228b22 }); // Grün für Insel
     islandMesh = new THREE.Mesh(geometry, material);
+    islandMesh.position.y = 0.5; // Etwas über dem Meer platzieren
     scene.add(islandMesh);
 
     console.log("DEBUG: 3D-Insel-Mesh zur Szene hinzugefügt.");
@@ -111,6 +89,7 @@ function generateIsland() {
 function animate() {
     requestAnimationFrame(animate);
     if (controls) controls.update(); // Für Maus-Steuerung
+    if (islandMesh) islandMesh.rotation.y += 0.01; // Leichte Drehung für Sichtbarkeit
     renderer.render(scene, camera);
 }
 
