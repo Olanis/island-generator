@@ -1,4 +1,4 @@
-// Einfacher Insel-Generator mit Three.js (WebGL) – Würfel oder Kästchen
+// Einfacher Insel-Generator mit Three.js (WebGL) – Insel schwimmt halb im Wasser
 // Kein Import nötig, THREE ist global geladen
 
 let scene, camera, renderer, islandMesh, seaMesh, controls;
@@ -42,17 +42,21 @@ function init() {
     document.getElementById('generateBtn').addEventListener('click', generateIsland);
     console.log("DEBUG: Button-Event gebunden.");
 
-    // Meer-Ebene hinzufügen (bleibt statisch)
+    // Meer-Ebene hinzufügen (durchsichtig)
     const seaGeometry = new THREE.PlaneGeometry(50, 50);
-    const seaMaterial = new THREE.MeshLambertMaterial({ color: 0x0077be }); // Dunkelblau für Meer
+    const seaMaterial = new THREE.MeshLambertMaterial({ 
+        color: 0x0077be,  // Dunkelblau für Meer
+        transparent: true,  // Durchsichtig machen
+        opacity: 0.6       // Leichte Durchsichtigkeit
+    });
     seaMesh = new THREE.Mesh(seaGeometry, seaMaterial);
     seaMesh.rotation.x = -Math.PI / 2; // Flach legen
     scene.add(seaMesh);
-    console.log("DEBUG: Meer-Ebene hinzugefügt.");
+    console.log("DEBUG: Durchsichtige Meer-Ebene hinzugefügt.");
 }
 
 function generateIsland() {
-    console.log("DEBUG: generateIsland() aufgerufen – Einfache 3D-Insel generieren.");
+    console.log("DEBUG: generateIsland() aufgerufen – Insel generieren, die halb im Wasser schwimmt.");
 
     // Alte Insel entfernen, falls vorhanden
     if (islandMesh) {
@@ -79,10 +83,10 @@ function generateIsland() {
     // Material und Mesh
     const material = new THREE.MeshLambertMaterial({ color: 0x228b22 }); // Grün für Insel
     islandMesh = new THREE.Mesh(geometry, material);
-    islandMesh.position.y = 0.5; // Etwas über dem Meer platzieren
+    islandMesh.position.y = 0; // Mitte auf Wasseroberfläche – untere Hälfte unter Wasser
     scene.add(islandMesh);
 
-    console.log("DEBUG: 3D-Insel-Mesh zur Szene hinzugefügt.");
+    console.log("DEBUG: Insel-Mesh zur Szene hinzugefügt (halb im Wasser).");
 
     // Rendern
     renderer.render(scene, camera);
