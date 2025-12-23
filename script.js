@@ -8,7 +8,6 @@ const context = canvas.getContext('webgpu');
 const device = await (async () => {
     if (!navigator.gpu) {
         document.getElementById('rendererInfo').textContent = 'Renderer: WebGL';
-        // Fallback to WebGL if needed, but for simplicity, throw error
         throw new Error('WebGPU not supported');
     }
     const adapter = await navigator.gpu.requestAdapter();
@@ -25,7 +24,7 @@ context.configure({
 
 const vertexShaderCode = `
 @vertex
-fn main(@builtin(vertex_index) vertexIndex: u32) -> @builtin(position) vec4<f32> {
+fn vertexMain(@builtin(vertex_index) vertexIndex: u32) -> @builtin(position) vec4<f32> {
     var positions = array<vec2<f32>, 4>(
         vec2<f32>(-0.5, -0.5),
         vec2<f32>(0.5, -0.5),
@@ -38,7 +37,7 @@ fn main(@builtin(vertex_index) vertexIndex: u32) -> @builtin(position) vec4<f32>
 
 const fragmentShaderCode = `
 @fragment
-fn main() -> @location(0) vec4<f32> {
+fn fragmentMain() -> @location(0) vec4<f32> {
     return vec4<f32>(0.0, 1.0, 0.0, 1.0); // Grün für Insel
 }
 `;
@@ -51,11 +50,11 @@ const pipeline = device.createRenderPipeline({
     layout: 'auto',
     vertex: {
         module: shaderModule,
-        entryPoint: 'main',
+        entryPoint: 'vertexMain',
     },
     fragment: {
         module: shaderModule,
-        entryPoint: 'main',
+        entryPoint: 'fragmentMain',
         targets: [{ format: navigator.gpu.getPreferredCanvasFormat() }],
     },
     primitive: {
