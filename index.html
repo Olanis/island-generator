@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Insel-Generator</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; margin: 20px; }
+        button { padding: 10px 20px; font-size: 16px; cursor: pointer; }
+        #container { width: 800px; height: 600px; margin: 20px auto; border: 1px solid #ccc; }
+    </style>
+</head>
+<body>
+    <h1>Insel-Generator</h1>
+    <p><strong>Hinweis:</strong> WebGPU ist experimentell und benötigt einen unterstützten Browser (z.B. Chrome mit Flag <code>chrome://flags/#enable-unsafe-webgpu</code>). Falls es nicht lädt, fällt es auf WebGL zurück.</p>
+    <button id="generateBtn">Insel generieren</button>
+    <div id="container"></div>
+
+    <script type="module" src="script.js"></script>
+</body>
+</html>
