@@ -164,7 +164,7 @@ function render(rotationY = 0) {
     const passEncoder = commandEncoder.beginRenderPass({
         colorAttachments: [{
             view: context.getCurrentTexture().createView(),
-            clearValue: { r: 0, g: 0, b: 0, a: 1 },
+            clearValue: { r: 0, g, 0, b: 0, a: 1 },
             loadOp: 'clear',
             storeOp: 'store',
         }],
@@ -188,17 +188,17 @@ function generateIsland() {
     let vertices;
     if (shape === 'quadrat') {
         vertices = new Float32Array([
-            -0.5, 0, -0.5,
-            0.5, 0, -0.5,
-            -0.5, 0, 0.5,
-            0.5, 0, 0.5
+            -1, 0, -1,
+            1, 0, -1,
+            -1, 0, 1,
+            1, 0, 1
         ]);
     } else {
         vertices = new Float32Array([
-            -1.0, 0, -0.5,
-            1.0, 0, -0.5,
-            -1.0, 0, 0.5,
-            1.0, 0, 0.5
+            -2, 0, -1,
+            2, 0, -1,
+            -2, 0, 1,
+            2, 0, 1
         ]);
     }
     device.queue.writeBuffer(vertexBuffer, 0, vertices);
