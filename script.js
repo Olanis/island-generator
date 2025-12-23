@@ -166,5 +166,51 @@ function render(rotationY = 0) {
             view: context.getCurrentTexture().createView(),
             clearValue: { r: 0, g: 0, b: 0, a: 1 },
             loadOp: 'clear',
-            storeOp: 'store](#)*`
-
+            storeOp: 'store',
+        }],
+        depthStencilAttachment: {
+            view: depthTexture.createView(),
+            depthClearValue: 1.0,
+            depthLoadOp: 'clear',
+            depthStoreOp: 'store',
+        },
+    });
+    passEncoder.setPipeline(pipeline);
+    passEncoder.setBindGroup(0, bindGroup);
+    passEncoder.setVertexBuffer(0, vertexBuffer);
+    passEncoder.draw(6);
+    passEncoder.end();
+    device.queue.submit([commandEncoder.finish()]);
+}
+
+function generateIsland() {
+    const shape = Math.random() < 0.5 ? 'quadrat' : 'rechteck';
+    let vertices;
+    if (shape === 'quadrat') {
+        vertices = new Float32Array([
+            -1, 0, -1,
+            1, 0, -1,
+            1, 0, 1,
+            -1, 0, -1,
+            1, 0, 1,
+            -1, 0, 1
+        ]);
+    } else {
+        vertices = new Float32Array([
+            -2, 0, -1,
+            2, 0, -1,
+            2, 0, 1,
+            -2, 0, -1,
+            2, 0, 1,
+            -2, 0, 1
+        ]);
+    }
+    device.queue.writeBuffer(vertexBuffer, 0, vertices);
+    const rotationY = Math.random() * Math.PI * 2;
+    render(rotationY);
+}
+
+document.getElementById('generateBtn').addEventListener('click', generateIsland);
+
+// Initial Insel
+render(0);
