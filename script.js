@@ -1,5 +1,6 @@
-import * as THREE from 'https://cdn.skypack.dev/three@0.154.0';
-import { WebGPURenderer } from 'https://cdn.skypack.dev/three@0.154.0/examples/jsm/renderers/webgpu/WebGPURenderer.js';
+import * as THREE from 'https://esm.sh/three@0.154.0';
+
+import { WebGPURenderer } from 'https://esm.sh/three@0.154.0/examples/jsm/renderers/webgpu/WebGPURenderer.js';
 
 const container = document.getElementById('container');
 const scene = new THREE.Scene();
