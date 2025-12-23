@@ -1,5 +1,10 @@
-const canvas = document.getElementById('container');
+const container = document.getElementById('container');
+const canvas = document.createElement('canvas');
+canvas.width = 800;
+canvas.height = 600;
+container.appendChild(canvas);
 const context = canvas.getContext('webgpu');
+
 const device = await (async () => {
     if (!navigator.gpu) {
         document.getElementById('rendererInfo').textContent = 'Renderer: WebGL';
