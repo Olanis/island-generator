@@ -213,4 +213,4 @@ function generateIsland() {
 document.getElementById('generateBtn').addEventListener('click', generateIsland);
 
 // Initial Insel
-render(0);
+generateIsland();
