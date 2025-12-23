@@ -139,15 +139,15 @@ function handleFullscreenChange() {
         // Im Vollbild: Rotation stoppen und Marker hinzufügen
         isRotating = false;
         if (islandMesh && !markerMesh) {
-            // Größeres oranges Quadrat als Marker (relativ zur Insel)
-            const markerGeometry = new THREE.BoxGeometry(5, 5, 2.5); // Größer
+            // Kleines oranges Quadrat als Marker (nicht skaliert)
+            const markerGeometry = new THREE.BoxGeometry(0.1, 0.1, 0.05); // Sehr klein
             const markerMaterial = new THREE.MeshLambertMaterial({ color: 0xffa500 }); // Orange
             markerMesh = new THREE.Mesh(markerGeometry, markerMaterial);
-            markerMesh.position.set(0, 30, 0); // Oben auf der Insel-Mitte (angepasst)
-            originalMarkerY = 30; // Ursprüngliche Höhe speichern
+            markerMesh.position.set(0, 0.6, 0); // Oben auf der Insel-Mitte
+            originalMarkerY = 0.6; // Ursprüngliche Höhe speichern
             velocityY = 0; // Geschwindigkeit zurücksetzen
             scene.add(markerMesh);
-            console.log("DEBUG: Größeres oranges Marker-Quadrat hinzugefügt.");
+            console.log("DEBUG: Kleines oranges Marker-Quadrat hinzugefügt.");
         }
         renderer.setSize(window.innerWidth, window.innerHeight);
         camera.aspect = window.innerWidth / window.innerHeight;
@@ -161,7 +161,7 @@ function handleFullscreenChange() {
             markerMesh.geometry.dispose();
             markerMesh.material.dispose();
             markerMesh = null;
-            console.log("DEBUG: Größeres oranges Marker-Quadrat entfernt.");
+            console.log("DEBUG: Kleines oranges Marker-Quadrat entfernt.");
         }
         renderer.setSize(800, 600);
         camera.aspect = 800 / 600;
