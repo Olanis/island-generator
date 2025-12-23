@@ -24,14 +24,8 @@ context.configure({
 
 const vertexShaderCode = `
 @vertex
-fn vertexMain(@builtin(vertex_index) vertexIndex: u32) -> @builtin(position) vec4<f32> {
-    var positions = array<vec2<f32>, 4>(
-        vec2<f32>(-0.5, -0.5),
-        vec2<f32>(0.5, -0.5),
-        vec2<f32>(-0.5, 0.5),
-        vec2<f32>(0.5, 0.5)
-    );
-    return vec4<f32>(positions[vertexIndex], 0.0, 1.0);
+fn vertexMain(@location(0) position: vec2<f32>) -> @builtin(position) vec4<f32> {
+    return vec4<f32>(position, 0.0, 1.0);
 }
 `;
 
@@ -46,11 +40,24 @@ const shaderModule = device.createShaderModule({
     code: vertexShaderCode + fragmentShaderCode,
 });
 
+const vertexBuffer = device.createBuffer({
+    size: 4 * 2 * 4, // 4 vertices, 2 floats per vertex, 4 bytes per float
+    usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
+});
+
 const pipeline = device.createRenderPipeline({
     layout: 'auto',
     vertex: {
         module: shaderModule,
         entryPoint: 'vertexMain',
+        buffers: [{
+            arrayStride: 8, // 2 floats * 4 bytes
+            attributes: [{
+                shaderLocation: 0,
+                offset: 0,
+                format: 'float32x2',
+            }],
+        }],
     },
     fragment: {
         module: shaderModule,
@@ -73,14 +80,35 @@ function render() {
         }],
     });
     passEncoder.setPipeline(pipeline);
+    passEncoder.setVertexBuffer(0, vertexBuffer);
     passEncoder.draw(4);
     passEncoder.end();
     device.queue.submit([commandEncoder.finish()]);
 }
 
-document.getElementById('generateBtn').addEventListener('click', () => {
-    // Für zufällige Insel, ändere die Positionen oder Farbe hier
+function generateIsland() {
+    const shape = Math.random() < 0.5 ? 'quadrat' : 'rechteck';
+    let vertices;
+    if (shape === 'quadrat') {
+        vertices = new Float32Array([
+            -0.5, -0.5,
+            0.5, -0.5,
+            -0.5, 0.5,
+            0.5, 0.5
+        ]);
+    } else {
+        vertices = new Float32Array([
+            -1.0, -0.5,
+            1.0, -0.5,
+            -1.0, 0.5,
+            1.0, 0.5
+        ]);
+    }
+    device.queue.writeBuffer(vertexBuffer, 0, vertices);
     render();
-});
+}
 
-render(); // Initial render
+document.getElementById('generateBtn').addEventListener('click', generateIsland);
+
+// Initial Insel
+generateIsland();
