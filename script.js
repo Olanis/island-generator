@@ -50,6 +50,11 @@ function init() {
         }
     });
 
+    // Vollbild-Änderungen überwachen
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange); // Safari
+    document.addEventListener('msfullscreenchange', handleFullscreenChange); // IE/Edge
+
     // Meer-Ebene hinzufügen (durchsichtig)
     const seaGeometry = new THREE.PlaneGeometry(50, 50);
     const seaMaterial = new THREE.MeshLambertMaterial({ 
@@ -124,6 +129,23 @@ function exitFullscreen() {
         document.msExitFullscreen();
     }
     console.log("DEBUG: Vollbild beendet.");
+}
+
+function handleFullscreenChange() {
+    console.log("DEBUG: handleFullscreenChange() aufgerufen – Größe anpassen.");
+    if (document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement) {
+        // Im Vollbild: An Bildschirmgröße anpassen
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        console.log(`DEBUG: Vollbild-Größe gesetzt: ${window.innerWidth}x${window.innerHeight}`);
+    } else {
+        // Vollbild beendet: Zurück zur normalen Größe
+        renderer.setSize(800, 600);
+        camera.aspect = 800 / 600;
+        camera.updateProjectionMatrix();
+        console.log("DEBUG: Normale Größe wiederhergestellt: 800x600");
+    }
 }
 
 function animate() {
