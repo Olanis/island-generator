@@ -1,5 +1,5 @@
 // Einfacher Insel-Generator mit Three.js (WebGL) – Würfel oder Kästchen
-import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.module.js';
+// Kein Import nötig, THREE ist global geladen
 
 let scene, camera, renderer, islandMesh, seaMesh, controls;
 
@@ -18,13 +18,16 @@ function init() {
     renderer.setSize(800, 600);
     document.getElementById('container').appendChild(renderer.domElement);
 
-    // Maus-Steuerung für Kamera (OrbitControls)
-    import('https://cdn.jsdelivr.net/npm/three@0.158.0/examples/jsm/controls/OrbitControls.js').then(({ OrbitControls }) => {
-        controls = new OrbitControls(camera, renderer.domElement);
+    // Maus-Steuerung für Kamera (OrbitControls) – separat laden
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js';
+    script.onload = function() {
+        controls = new THREE.OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
         controls.dampingFactor = 0.05;
         console.log("DEBUG: OrbitControls hinzugefügt – Maus zum Drehen/Zoomen verwenden.");
-    });
+    };
+    document.head.appendChild(script);
 
     console.log("DEBUG: Szene, Kamera und Renderer erstellt.");
 
