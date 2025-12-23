@@ -43,7 +43,7 @@ const shaderModule = device.createShaderModule({
 });
 
 const vertexBuffer = device.createBuffer({
-    size: 4 * 3 * 4, // 4 vertices, 3 floats per vertex, 4 bytes per float
+    size: 6 * 3 * 4, // 6 vertices, 3 floats per vertex, 4 bytes per float
     usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
 });
 
@@ -90,7 +90,7 @@ const pipeline = device.createRenderPipeline({
         targets: [{ format: navigator.gpu.getPreferredCanvasFormat() }],
     },
     primitive: {
-        topology: 'triangle-strip',
+        topology: 'triangle-list',
     },
     depthStencil: {
         format: 'depth24plus',
@@ -121,12 +121,12 @@ function createMVPMatrix(rotationY = 0) {
         0, 0, near * far * rangeInv * 2, 0
     ];
 
-    // View (camera at (0,0,5) looking at (0,0,0))
+    // View (camera at (0,0,2) looking at (0,0,0))
     const view = [
         1, 0, 0, 0,
         0, 1, 0, 0,
         0, 0, 1, 0,
-        0, 0, -5, 1
+        0, 0, -2, 1
     ];
 
     // Model (rotation around Y)
@@ -166,47 +166,5 @@ function render(rotationY = 0) {
             view: context.getCurrentTexture().createView(),
             clearValue: { r: 0, g: 0, b: 0, a: 1 },
             loadOp: 'clear',
-            storeOp: 'store',
-        }],
-        depthStencilAttachment: {
-            view: depthTexture.createView(),
-            depthClearValue: 1.0,
-            depthLoadOp: 'clear',
-            depthStoreOp: 'store',
-        },
-    });
-    passEncoder.setPipeline(pipeline);
-    passEncoder.setBindGroup(0, bindGroup);
-    passEncoder.setVertexBuffer(0, vertexBuffer);
-    passEncoder.draw(4);
-    passEncoder.end();
-    device.queue.submit([commandEncoder.finish()]);
-}
-
-function generateIsland() {
-    const shape = Math.random() < 0.5 ? 'quadrat' : 'rechteck';
-    let vertices;
-    if (shape === 'quadrat') {
-        vertices = new Float32Array([
-            -1, 0, -1,
-            1, 0, -1,
-            -1, 0, 1,
-            1, 0, 1
-        ]);
-    } else {
-        vertices = new Float32Array([
-            -2, 0, -1,
-            2, 0, -1,
-            -2, 0, 1,
-            2, 0, 1
-        ]);
-    }
-    device.queue.writeBuffer(vertexBuffer, 0, vertices);
-    const rotationY = Math.random() * Math.PI * 2;
-    render(rotationY);
-}
-
-document.getElementById('generateBtn').addEventListener('click', generateIsland);
-
-// Initial Insel
-render(0);
+            storeOp: 'store](#)*`
+
