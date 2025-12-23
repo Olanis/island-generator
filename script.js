@@ -1,7 +1,7 @@
 // Einfacher Insel-Generator mit Three.js (WebGL) – Insel schwimmt halb im Wasser
 // Kein Import nötig, THREE ist global geladen
 
-let scene, camera, renderer, islandMesh, seaMesh, controls, isRotating = true;
+let scene, camera, renderer, islandMesh, seaMesh, controls, isRotating = true, markerMesh;
 
 function init() {
     console.log("DEBUG: init() aufgerufen – Three.js Setup starten.");
@@ -132,21 +132,37 @@ function exitFullscreen() {
 }
 
 function handleFullscreenChange() {
-    console.log("DEBUG: handleFullscreenChange() aufgerufen – Größe und Rotation anpassen.");
+    console.log("DEBUG: handleFullscreenChange() aufgerufen – Größe, Rotation und Marker anpassen.");
     if (document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement) {
-        // Im Vollbild: Rotation stoppen
+        // Im Vollbild: Rotation stoppen und Marker hinzufügen
         isRotating = false;
+        if (islandMesh && !markerMesh) {
+            // Kleines oranges Quadrat als Marker
+            const markerGeometry = new THREE.BoxGeometry(0.1, 0.1, 0.05); // Sehr klein
+            const markerMaterial = new THREE.MeshLambertMaterial({ color: 0xffa500 }); // Orange
+            markerMesh = new THREE.Mesh(markerGeometry, markerMaterial);
+            markerMesh.position.set(0, 0.6, 0); // Oben auf der Insel-Mitte
+            scene.add(markerMesh);
+            console.log("DEBUG: Oranges Marker-Quadrat hinzugefügt.");
+        }
         renderer.setSize(window.innerWidth, window.innerHeight);
         camera.aspect = window.innerWidth / window.innerHeight;
         camera.updateProjectionMatrix();
-        console.log(`DEBUG: Vollbild-Größe gesetzt: ${window.innerWidth}x${window.innerHeight}, Rotation gestoppt.`);
+        console.log(`DEBUG: Vollbild-Größe gesetzt: ${window.innerWidth}x${window.innerHeight}.`);
     } else {
-        // Vollbild beendet: Rotation wieder starten
+        // Vollbild beendet: Rotation starten und Marker entfernen
         isRotating = true;
+        if (markerMesh) {
+            scene.remove(markerMesh);
+            markerMesh.geometry.dispose();
+            markerMesh.material.dispose();
+            markerMesh = null;
+            console.log("DEBUG: Oranges Marker-Quadrat entfernt.");
+        }
         renderer.setSize(800, 600);
         camera.aspect = 800 / 600;
         camera.updateProjectionMatrix();
-        console.log("DEBUG: Normale Größe wiederhergestellt: 800x600, Rotation gestartet.");
+        console.log("DEBUG: Normale Größe wiederhergestellt: 800x600.");
     }
 }
 
