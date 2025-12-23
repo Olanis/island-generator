@@ -39,6 +39,8 @@ def generate_island():
     # Wenn bereits ein Plot existiert, entfernen
     if canvas is not None:
         canvas.get_tk_widget().destroy()
+    if fig is not None:
+        plt.close(fig)
     
     # Plot erstellen
     fig = plt.figure(figsize=(8, 6))
