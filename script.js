@@ -1,7 +1,7 @@
 // Einfacher Insel-Generator mit Three.js (WebGL) – Insel schwimmt halb im Wasser
 // Kein Import nötig, THREE ist global geladen
 
-let scene, camera, renderer, islandMesh, seaMesh, controls, isRotating = true, markerMesh, originalMarkerY;
+let scene, camera, renderer, islandMesh, seaMesh, controls, isRotating = true, markerMesh, originalMarkerY, velocityY = 0, gravity = -0.005, jumpStrength = 0.1;
 
 function init() {
     console.log("DEBUG: init() aufgerufen – Three.js Setup starten.");
@@ -145,6 +145,7 @@ function handleFullscreenChange() {
             markerMesh = new THREE.Mesh(markerGeometry, markerMaterial);
             markerMesh.position.set(0, 0.6, 0); // Oben auf der Insel-Mitte
             originalMarkerY = 0.6; // Ursprüngliche Höhe speichern
+            velocityY = 0; // Geschwindigkeit zurücksetzen
             scene.add(markerMesh);
             console.log("DEBUG: Oranges Marker-Quadrat hinzugefügt.");
         }
@@ -170,13 +171,9 @@ function handleFullscreenChange() {
 }
 
 function jumpMarker() {
-    if (markerMesh && (document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement)) {
-        console.log("DEBUG: jumpMarker() aufgerufen – Marker springt.");
-        markerMesh.position.y = originalMarkerY + 0.5; // Springen
-        setTimeout(() => {
-            markerMesh.position.y = originalMarkerY; // Zurückfallen
-            console.log("DEBUG: Marker zurückgefallen.");
-        }, 500); // Nach 500ms zurück
+    if (markerMesh && (document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement) && markerMesh.position.y <= originalMarkerY + 0.01) {
+        console.log("DEBUG: jumpMarker() aufgerufen – Marker springt mit Schwerkraft.");
+        velocityY = jumpStrength; // Aufwärtsgeschwindigkeit setzen
     }
 }
 
@@ -184,6 +181,17 @@ function animate() {
     requestAnimationFrame(animate);
     if (controls) controls.update(); // Für Maus-Steuerung
     if (islandMesh && isRotating) islandMesh.rotation.y += 0.01; // Drehung nur wenn nicht im Vollbild
+
+    // Schwerkraft für Marker
+    if (markerMesh) {
+        velocityY += gravity; // Schwerkraft anwenden
+        markerMesh.position.y += velocityY; // Position aktualisieren
+        if (markerMesh.position.y <= originalMarkerY) { // Boden erreicht
+            markerMesh.position.y = originalMarkerY;
+            velocityY = 0; // Stoppen
+        }
+    }
+
     renderer.render(scene, camera);
 }
 
