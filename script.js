@@ -1,63 +1,82 @@
-import * as THREE from 'https://esm.sh/three@0.154.0';
-
-const container = document.getElementById('container');
-const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(75, 800 / 600, 0.1, 1000);
-camera.position.set(2, 2, 2);
-camera.lookAt(0, 0, 0);
-
-let renderer;
-
-async function initRenderer() {
-    if ('gpu' in navigator) {
-        try {
-            const { WebGPURenderer } = await import('https://esm.sh/three@0.154.0/examples/jsm/renderers/webgpu/WebGPURenderer.js');
-            renderer = new WebGPURenderer({ antialias: true });
-            await renderer.init();
-            document.getElementById('rendererInfo').textContent = 'Renderer: WebGPU';
-        } catch (error) {
-            console.warn('WebGPU failed:', error);
-            renderer = new THREE.WebGLRenderer({ antialias: true });
-            document.getElementById('rendererInfo').textContent = 'Renderer: WebGL';
-        }
-    } else {
-        renderer = new THREE.WebGLRenderer({ antialias: true });
+const canvas = document.getElementById('container');
+const context = canvas.getContext('webgpu');
+const device = await (async () => {
+    if (!navigator.gpu) {
         document.getElementById('rendererInfo').textContent = 'Renderer: WebGL';
+        // Fallback to WebGL if needed, but for simplicity, throw error
+        throw new Error('WebGPU not supported');
     }
-    renderer.setSize(800, 600);
-    container.appendChild(renderer.domElement);
+    const adapter = await navigator.gpu.requestAdapter();
+    const device = await adapter.requestDevice();
+    document.getElementById('rendererInfo').textContent = 'Renderer: WebGPU';
+    return device;
+})();
+
+context.configure({
+    device,
+    format: navigator.gpu.getPreferredCanvasFormat(),
+    alphaMode: 'premultiplied',
+});
+
+const vertexShaderCode = `
+@vertex
+fn main(@builtin(vertex_index) vertexIndex: u32) -> @builtin(position) vec4<f32> {
+    var positions = array<vec2<f32>, 4>(
+        vec2<f32>(-0.5, -0.5),
+        vec2<f32>(0.5, -0.5),
+        vec2<f32>(-0.5, 0.5),
+        vec2<f32>(0.5, 0.5)
+    );
+    return vec4<f32>(positions[vertexIndex], 0.0, 1.0);
 }
+`;
 
-await initRenderer();
+const fragmentShaderCode = `
+@fragment
+fn main() -> @location(0) vec4<f32> {
+    return vec4<f32>(0.0, 1.0, 0.0, 1.0); // Grün für Insel
+}
+`;
 
-function generateIsland() {
-    scene.children.forEach(child => {
-        if (child.type === 'Mesh') {
-            scene.remove(child);
-            child.geometry.dispose();
-            child.material.dispose();
-        }
+const shaderModule = device.createShaderModule({
+    code: vertexShaderCode + fragmentShaderCode,
+});
+
+const pipeline = device.createRenderPipeline({
+    layout: 'auto',
+    vertex: {
+        module: shaderModule,
+        entryPoint: 'main',
+    },
+    fragment: {
+        module: shaderModule,
+        entryPoint: 'main',
+        targets: [{ format: navigator.gpu.getPreferredCanvasFormat() }],
+    },
+    primitive: {
+        topology: 'triangle-strip',
+    },
+});
+
+function render() {
+    const commandEncoder = device.createCommandEncoder();
+    const passEncoder = commandEncoder.beginRenderPass({
+        colorAttachments: [{
+            view: context.getCurrentTexture().createView(),
+            clearValue: { r: 0, g: 0, b: 0, a: 1 },
+            loadOp: 'clear',
+            storeOp: 'store',
+        }],
     });
-
-    const shape = Math.random() < 0.5 ? 'quadrat' : 'rechteck';
-    let vertices;
-    if (shape === 'quadrat') {
-        vertices = [0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0];
-    } else {
-        vertices = [0, 0, 0, 2, 0, 0, 2, 1, 0, 0, 1, 0];
-    }
-    const indices = [0, 1, 2, 0, 2, 3];
-
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
-    geometry.setIndex(indices);
-    const material = new THREE.MeshBasicMaterial({ color: 0x00ff00, side: THREE.DoubleSide });
-    const mesh = new THREE.Mesh(geometry, material);
-    scene.add(mesh);
-
-    renderer.render(scene, camera);
+    passEncoder.setPipeline(pipeline);
+    passEncoder.draw(4);
+    passEncoder.end();
+    device.queue.submit([commandEncoder.finish()]);
 }
 
-document.getElementById('generateBtn').addEventListener('click', generateIsland);
+document.getElementById('generateBtn').addEventListener('click', () => {
+    // Für zufällige Insel, ändere die Positionen oder Farbe hier
+    render();
+});
 
-renderer.render(scene, camera);
+render(); // Initial render
