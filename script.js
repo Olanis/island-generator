@@ -1,7 +1,7 @@
 // Einfacher Insel-Generator mit Three.js (WebGL) – Insel schwimmt halb im Wasser
 // Kein Import nötig, THREE ist global geladen
 
-let scene, camera, renderer, islandMesh, seaMesh, controls;
+let scene, camera, renderer, islandMesh, seaMesh, controls, isRotating = true;
 
 function init() {
     console.log("DEBUG: init() aufgerufen – Three.js Setup starten.");
@@ -132,26 +132,28 @@ function exitFullscreen() {
 }
 
 function handleFullscreenChange() {
-    console.log("DEBUG: handleFullscreenChange() aufgerufen – Größe anpassen.");
+    console.log("DEBUG: handleFullscreenChange() aufgerufen – Größe und Rotation anpassen.");
     if (document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement) {
-        // Im Vollbild: An Bildschirmgröße anpassen
+        // Im Vollbild: Rotation stoppen
+        isRotating = false;
         renderer.setSize(window.innerWidth, window.innerHeight);
         camera.aspect = window.innerWidth / window.innerHeight;
         camera.updateProjectionMatrix();
-        console.log(`DEBUG: Vollbild-Größe gesetzt: ${window.innerWidth}x${window.innerHeight}`);
+        console.log(`DEBUG: Vollbild-Größe gesetzt: ${window.innerWidth}x${window.innerHeight}, Rotation gestoppt.`);
     } else {
-        // Vollbild beendet: Zurück zur normalen Größe
+        // Vollbild beendet: Rotation wieder starten
+        isRotating = true;
         renderer.setSize(800, 600);
         camera.aspect = 800 / 600;
         camera.updateProjectionMatrix();
-        console.log("DEBUG: Normale Größe wiederhergestellt: 800x600");
+        console.log("DEBUG: Normale Größe wiederhergestellt: 800x600, Rotation gestartet.");
     }
 }
 
 function animate() {
     requestAnimationFrame(animate);
     if (controls) controls.update(); // Für Maus-Steuerung
-    if (islandMesh) islandMesh.rotation.y += 0.01; // Leichte Drehung für Sichtbarkeit
+    if (islandMesh && isRotating) islandMesh.rotation.y += 0.01; // Drehung nur wenn nicht im Vollbild
     renderer.render(scene, camera);
 }
 
