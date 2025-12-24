@@ -27,12 +27,12 @@ function init() {
         controls = new THREE.OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
         controls.dampingFactor = 0.05;
-        // Maus-Buttons tauschen: Linke für Pannen/Zoomen, Rechte für Rotieren
+        // Maus-Buttons: Linke deaktiviert, Rechte für Rotation
         controls.mouseButtons = {
-            LEFT: THREE.MOUSE.PAN,
+            LEFT: null, // Deaktiviert
             RIGHT: THREE.MOUSE.ROTATE
         };
-        console.log("DEBUG: OrbitControls hinzugefügt – Maus zum Drehen/Zoomen verwenden (getauscht).");
+        console.log("DEBUG: OrbitControls hinzugefügt – Maus zum Drehen verwenden (Linke deaktiviert).");
     };
     document.head.appendChild(script);
 
@@ -153,7 +153,7 @@ function exitFullscreen() {
 function handleFullscreenChange() {
     console.log("DEBUG: handleFullscreenChange() aufgerufen – Größe, Rotation und Player anpassen.");
     if (document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement) {
-        // Im Vollbild: Rotation stoppen und Player hinzufügen
+        // Im Vollbild: Rotation stoppen, Player hinzufügen und Kamera folgen lassen
         isRotating = false;
         if (islandMesh && !playerMesh) {
             // Sichtbarer orangener Player (größer gemacht)
@@ -166,12 +166,18 @@ function handleFullscreenChange() {
             scene.add(playerMesh);
             console.log("DEBUG: Sichtbarer orangener Player auf Insel-Oberfläche hinzugefügt bei y=" + originalPlayerY);
         }
+        if (playerMesh && controls) {
+            // Kamera folgt Player (Third-Person)
+            controls.target.copy(playerMesh.position);
+            // Kamera-Position hinter Player setzen
+            updateCameraPosition();
+        }
         renderer.setSize(window.innerWidth, window.innerHeight);
         camera.aspect = window.innerWidth / window.innerHeight;
         camera.updateProjectionMatrix();
         console.log(`DEBUG: Vollbild-Größe gesetzt: ${window.innerWidth}x${window.innerHeight}.`);
     } else {
-        // Vollbild beendet: Rotation starten und Player entfernen
+        // Vollbild beendet: Rotation starten, Player entfernen, normale Steuerung
         isRotating = true;
         if (playerMesh) {
             scene.remove(playerMesh);
@@ -180,10 +186,25 @@ function handleFullscreenChange() {
             playerMesh = null;
             console.log("DEBUG: Sichtbarer orangener Player entfernt.");
         }
+        if (controls) {
+            controls.target.set(0, 0, 0); // Zurück zu Mitte
+            controls.mouseButtons.LEFT = THREE.MOUSE.PAN; // Linke wieder aktivieren
+        }
         renderer.setSize(800, 600);
         camera.aspect = 800 / 600;
         camera.updateProjectionMatrix();
         console.log("DEBUG: Normale Größe wiederhergestellt: 800x600.");
+    }
+}
+
+function updateCameraPosition() {
+    if (playerMesh && controls) {
+        // Kamera hinter Player positionieren (schräg oben)
+        const offset = new THREE.Vector3(0, 20, 30); // Höhe 20, Distanz 30 hinter
+        // Offset basierend auf Kamerarotation drehen
+        offset.applyQuaternion(camera.quaternion);
+        camera.position.copy(playerMesh.position).add(offset);
+        controls.target.copy(playerMesh.position);
     }
 }
 
@@ -199,12 +220,37 @@ function animate() {
     if (controls) controls.update(); // Für Maus-Steuerung
     if (islandMesh && isRotating) islandMesh.rotation.y += 0.01; // Drehung nur wenn nicht im Vollbild
 
-    // Player-Bewegung mit WASD
+    // Player-Bewegung mit WASD (relativ zur Kamera im Vollbild)
     if (playerMesh) {
-        if (moveForward) playerMesh.position.z -= moveSpeed; // W: Vorwärts
-        if (moveBackward) playerMesh.position.z += moveSpeed; // S: Rückwärts
-        if (moveLeft) playerMesh.position.x -= moveSpeed; // A: Links
-        if (moveRight) playerMesh.position.x += moveSpeed; // D: Rechts
+        let direction = new THREE.Vector3();
+        camera.getWorldDirection(direction); // Vorwärtsrichtung der Kamera
+        direction.y = 0; // Nur horizontal
+        direction.normalize();
+
+        let right = new THREE.Vector3().crossVectors(direction, new THREE.Vector3(0, 1, 0)).normalize(); // Rechtsrichtung
+
+        if (moveForward) playerMesh.position.add(direction.clone().multiplyScalar(moveSpeed)); // W: Vorwärts
+        if (moveBackward) playerMesh.position.add(direction.clone().multiplyScalar(-moveSpeed)); // S: Rückwärts
+        if (moveLeft) playerMesh.position.add(right.clone().multiplyScalar(-moveSpeed)); // A: Links
+        if (moveRight) playerMesh.position.add(right.clone().multiplyScalar(moveSpeed)); // D: Rechts
+
+        // Player-Drehung in Bewegungsrichtung
+        if (moveForward || moveBackward || moveLeft || moveRight) {
+            let moveDir = new THREE.Vector3();
+            if (moveForward) moveDir.add(direction);
+            if (moveBackward) moveDir.add(direction.clone().multiplyScalar(-1));
+            if (moveLeft) moveDir.add(right.clone().multiplyScalar(-1));
+            if (moveRight) moveDir.add(right);
+            if (moveDir.length() > 0) {
+                moveDir.normalize();
+                playerMesh.lookAt(playerMesh.position.clone().add(moveDir));
+            }
+        }
+
+        // Kamera-Position aktualisieren im Vollbild
+        if (document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement) {
+            updateCameraPosition();
+        }
 
         // Schwerkraft für Springen
         velocityY += gravity;
