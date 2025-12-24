@@ -143,11 +143,11 @@ function handleFullscreenChange() {
             const markerGeometry = new THREE.BoxGeometry(0.1, 0.1, 0.05); // Sehr klein
             const markerMaterial = new THREE.MeshLambertMaterial({ color: 0xffa500 }); // Orange
             markerMesh = new THREE.Mesh(markerGeometry, markerMaterial);
-            markerMesh.position.set(0, 0.6, 0); // Oben auf der Insel-Mitte
-            originalMarkerY = 0.6; // Ursprüngliche Höhe speichern
+            markerMesh.position.set(0, 25.6, 0); // Auf der Insel-Oberfläche (y=25 für Oberfläche, +0.6)
+            originalMarkerY = 25.6; // Ursprüngliche Höhe speichern
             velocityY = 0; // Geschwindigkeit zurücksetzen
             scene.add(markerMesh);
-            console.log("DEBUG: Kleines oranges Marker-Quadrat hinzugefügt.");
+            console.log("DEBUG: Kleines oranges Marker-Quadrat auf Insel-Oberfläche hinzugefügt.");
         }
         renderer.setSize(window.innerWidth, window.innerHeight);
         camera.aspect = window.innerWidth / window.innerHeight;
