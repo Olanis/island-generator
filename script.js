@@ -1,7 +1,7 @@
 // Einfacher Insel-Generator mit Three.js (WebGL) – Insel schwimmt halb im Wasser
 // Kein Import nötig, THREE ist global geladen
 
-let scene, camera, renderer, islandMesh, seaMesh, controls, isRotating = true, markerMesh, originalMarkerY, velocityY = 0, gravity = -0.005, jumpStrength = 0.1;
+let scene, camera, renderer, islandMesh, seaMesh, controls, isRotating = true, playerMesh, originalPlayerY, velocityY = 0, gravity = -0.005, jumpStrength = 0.1;
 
 function init() {
     console.log("DEBUG: init() aufgerufen – Three.js Setup starten.");
@@ -46,7 +46,7 @@ function init() {
     // Tasten-Events
     document.addEventListener('keydown', function(event) {
         if (event.key === ' ') { // Leertaste
-            jumpMarker();
+            jumpPlayer();
         } else if (event.key === 'Escape') {
             exitFullscreen();
         }
@@ -134,34 +134,34 @@ function exitFullscreen() {
 }
 
 function handleFullscreenChange() {
-    console.log("DEBUG: handleFullscreenChange() aufgerufen – Größe, Rotation und Marker anpassen.");
+    console.log("DEBUG: handleFullscreenChange() aufgerufen – Größe, Rotation und Player anpassen.");
     if (document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement) {
-        // Im Vollbild: Rotation stoppen und Marker hinzufügen
+        // Im Vollbild: Rotation stoppen und Player hinzufügen
         isRotating = false;
-        if (islandMesh && !markerMesh) {
-            // Kleines oranges Quadrat als Marker (nicht skaliert)
-            const markerGeometry = new THREE.BoxGeometry(0.1, 0.1, 0.05); // Sehr klein
-            const markerMaterial = new THREE.MeshLambertMaterial({ color: 0xffa500 }); // Orange
-            markerMesh = new THREE.Mesh(markerGeometry, markerMaterial);
-            markerMesh.position.set(0, 25.6, 0); // Auf der Insel-Oberfläche (y=25 für Oberfläche, +0.6)
-            originalMarkerY = 25.6; // Ursprüngliche Höhe speichern
+        if (islandMesh && !playerMesh) {
+            // Sichtbarer orangener Player (größer gemacht)
+            const playerGeometry = new THREE.BoxGeometry(1, 1, 0.5); // Größer für Sichtbarkeit
+            const playerMaterial = new THREE.MeshLambertMaterial({ color: 0xffa500 }); // Orange
+            playerMesh = new THREE.Mesh(playerGeometry, playerMaterial);
+            playerMesh.position.set(0, 25.5, 0); // Genau auf der Insel-Oberfläche (y=25, +0.5)
+            originalPlayerY = 25.5; // Ursprüngliche Höhe speichern
             velocityY = 0; // Geschwindigkeit zurücksetzen
-            scene.add(markerMesh);
-            console.log("DEBUG: Kleines oranges Marker-Quadrat auf Insel-Oberfläche hinzugefügt.");
+            scene.add(playerMesh);
+            console.log("DEBUG: Sichtbarer orangener Player auf Insel-Oberfläche hinzugefügt bei y=" + originalPlayerY);
         }
         renderer.setSize(window.innerWidth, window.innerHeight);
         camera.aspect = window.innerWidth / window.innerHeight;
         camera.updateProjectionMatrix();
         console.log(`DEBUG: Vollbild-Größe gesetzt: ${window.innerWidth}x${window.innerHeight}.`);
     } else {
-        // Vollbild beendet: Rotation starten und Marker entfernen
+        // Vollbild beendet: Rotation starten und Player entfernen
         isRotating = true;
-        if (markerMesh) {
-            scene.remove(markerMesh);
-            markerMesh.geometry.dispose();
-            markerMesh.material.dispose();
-            markerMesh = null;
-            console.log("DEBUG: Kleines oranges Marker-Quadrat entfernt.");
+        if (playerMesh) {
+            scene.remove(playerMesh);
+            playerMesh.geometry.dispose();
+            playerMesh.material.dispose();
+            playerMesh = null;
+            console.log("DEBUG: Sichtbarer orangener Player entfernt.");
         }
         renderer.setSize(800, 600);
         camera.aspect = 800 / 600;
@@ -170,9 +170,9 @@ function handleFullscreenChange() {
     }
 }
 
-function jumpMarker() {
-    if (markerMesh && (document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement) && markerMesh.position.y <= originalMarkerY + 0.01) {
-        console.log("DEBUG: jumpMarker() aufgerufen – Marker springt mit Schwerkraft.");
+function jumpPlayer() {
+    if (playerMesh && (document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement) && playerMesh.position.y <= originalPlayerY + 0.01) {
+        console.log("DEBUG: jumpPlayer() aufgerufen – Player springt mit Schwerkraft.");
         velocityY = jumpStrength; // Aufwärtsgeschwindigkeit setzen
     }
 }
@@ -182,12 +182,12 @@ function animate() {
     if (controls) controls.update(); // Für Maus-Steuerung
     if (islandMesh && isRotating) islandMesh.rotation.y += 0.01; // Drehung nur wenn nicht im Vollbild
 
-    // Schwerkraft für Marker
-    if (markerMesh) {
+    // Schwerkraft für Player
+    if (playerMesh) {
         velocityY += gravity; // Schwerkraft anwenden
-        markerMesh.position.y += velocityY; // Position aktualisieren
-        if (markerMesh.position.y <= originalMarkerY) { // Boden erreicht
-            markerMesh.position.y = originalMarkerY;
+        playerMesh.position.y += velocityY; // Position aktualisieren
+        if (playerMesh.position.y <= originalPlayerY) { // Boden erreicht
+            playerMesh.position.y = originalPlayerY;
             velocityY = 0; // Stoppen
         }
     }
