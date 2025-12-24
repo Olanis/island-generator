@@ -200,6 +200,8 @@ function updateCameraPosition() {
     if (playerMesh && controls) {
         // Kamera hinter Player positionieren (schräg oben)
         const offset = new THREE.Vector3(0, 20, 30); // Höhe 20, Distanz 30 hinter
+        // Offset basierend auf Kamerarotation drehen
+        offset.applyQuaternion(camera.quaternion);
         camera.position.copy(playerMesh.position).add(offset);
         controls.target.copy(playerMesh.position);
     }
@@ -217,12 +219,32 @@ function animate() {
     if (controls) controls.update(); // Für Maus-Steuerung
     if (islandMesh && isRotating) islandMesh.rotation.y += 0.01; // Drehung nur wenn nicht im Vollbild
 
-    // Player-Bewegung mit WASD
+    // Player-Bewegung mit WASD (relativ zur Kamera im Vollbild)
     if (playerMesh) {
-        if (moveForward) playerMesh.position.z -= moveSpeed; // W: Vorwärts
-        if (moveBackward) playerMesh.position.z += moveSpeed; // S: Rückwärts
-        if (moveLeft) playerMesh.position.x -= moveSpeed; // A: Links
-        if (moveRight) playerMesh.position.x += moveSpeed; // D: Rechts
+        let direction = new THREE.Vector3();
+        camera.getWorldDirection(direction); // Vorwärtsrichtung der Kamera
+        direction.y = 0; // Nur horizontal
+        direction.normalize();
+
+        let right = new THREE.Vector3().crossVectors(direction, new THREE.Vector3(0, 1, 0)).normalize(); // Rechtsrichtung
+
+        if (moveForward) playerMesh.position.add(direction.clone().multiplyScalar(moveSpeed)); // W: Vorwärts
+        if (moveBackward) playerMesh.position.add(direction.clone().multiplyScalar(-moveSpeed)); // S: Rückwärts
+        if (moveLeft) playerMesh.position.add(right.clone().multiplyScalar(-moveSpeed)); // A: Links
+        if (moveRight) playerMesh.position.add(right.clone().multiplyScalar(moveSpeed)); // D: Rechts
+
+        // Player-Drehung in Bewegungsrichtung
+        if (moveForward || moveBackward || moveLeft || moveRight) {
+            let moveDir = new THREE.Vector3();
+            if (moveForward) moveDir.add(direction);
+            if (moveBackward) moveDir.add(direction.clone().multiplyScalar(-1));
+            if (moveLeft) moveDir.add(right.clone().multiplyScalar(-1));
+            if (moveRight) moveDir.add(right);
+            if (moveDir.length() > 0) {
+                moveDir.normalize();
+                playerMesh.lookAt(playerMesh.position.clone().add(moveDir));
+            }
+        }
 
         // Kamera-Position aktualisieren im Vollbild
         if (document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement) {
