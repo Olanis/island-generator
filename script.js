@@ -2,6 +2,8 @@
 // Kein Import nötig, THREE ist global geladen
 
 let scene, camera, renderer, islandMesh, seaMesh, controls, isRotating = true, playerMesh, originalPlayerY, velocityY = 0, gravity = -0.005, jumpStrength = 0.1;
+let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
+const moveSpeed = 0.5; // Geschwindigkeit der Bewegung
 
 function init() {
     console.log("DEBUG: init() aufgerufen – Three.js Setup starten.");
@@ -43,13 +45,23 @@ function init() {
     document.getElementById('playBtn').addEventListener('click', enterFullscreen);
     console.log("DEBUG: Button-Events gebunden.");
 
-    // Tasten-Events
+    // Tasten-Events für Player-Bewegung und Springen
     document.addEventListener('keydown', function(event) {
-        if (event.key === ' ') { // Leertaste
-            jumpPlayer();
-        } else if (event.key === 'Escape') {
-            exitFullscreen();
-        }
+        const key = event.key.toLowerCase();
+        if (key === 'w') moveForward = true;
+        else if (key === 's') moveBackward = true;
+        else if (key === 'a') moveLeft = true;
+        else if (key === 'd') moveRight = true;
+        else if (key === ' ') jumpPlayer(); // Leertaste für Springen
+        else if (key === 'escape') exitFullscreen();
+    });
+
+    document.addEventListener('keyup', function(event) {
+        const key = event.key.toLowerCase();
+        if (key === 'w') moveForward = false;
+        else if (key === 's') moveBackward = false;
+        else if (key === 'a') moveLeft = false;
+        else if (key === 'd') moveRight = false;
     });
 
     // Vollbild-Änderungen überwachen
@@ -182,13 +194,19 @@ function animate() {
     if (controls) controls.update(); // Für Maus-Steuerung
     if (islandMesh && isRotating) islandMesh.rotation.y += 0.01; // Drehung nur wenn nicht im Vollbild
 
-    // Schwerkraft für Player
+    // Player-Bewegung mit WASD
     if (playerMesh) {
-        velocityY += gravity; // Schwerkraft anwenden
-        playerMesh.position.y += velocityY; // Position aktualisieren
-        if (playerMesh.position.y <= originalPlayerY) { // Boden erreicht
+        if (moveForward) playerMesh.position.z -= moveSpeed; // W: Vorwärts
+        if (moveBackward) playerMesh.position.z += moveSpeed; // S: Rückwärts
+        if (moveLeft) playerMesh.position.x -= moveSpeed; // A: Links
+        if (moveRight) playerMesh.position.x += moveSpeed; // D: Rechts
+
+        // Schwerkraft für Springen
+        velocityY += gravity;
+        playerMesh.position.y += velocityY;
+        if (playerMesh.position.y <= originalPlayerY) {
             playerMesh.position.y = originalPlayerY;
-            velocityY = 0; // Stoppen
+            velocityY = 0;
         }
     }
 
