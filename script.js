@@ -27,7 +27,12 @@ function init() {
         controls = new THREE.OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
         controls.dampingFactor = 0.05;
-        console.log("DEBUG: OrbitControls hinzugefügt – Maus zum Drehen/Zoomen verwenden.");
+        // Maus-Buttons tauschen: Linke für Pannen/Zoomen, Rechte für Rotieren
+        controls.mouseButtons = {
+            LEFT: THREE.MOUSE.PAN,
+            RIGHT: THREE.MOUSE.ROTATE
+        };
+        console.log("DEBUG: OrbitControls hinzugefügt – Maus zum Drehen/Zoomen verwenden (getauscht).");
     };
     document.head.appendChild(script);
 
