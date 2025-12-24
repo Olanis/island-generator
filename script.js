@@ -153,7 +153,7 @@ function exitFullscreen() {
 function handleFullscreenChange() {
     console.log("DEBUG: handleFullscreenChange() aufgerufen – Größe, Rotation und Player anpassen.");
     if (document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement) {
-        // Im Vollbild: Rotation stoppen und Player hinzufügen
+        // Im Vollbild: Rotation stoppen, Player hinzufügen und Kamera hinter Player
         isRotating = false;
         if (islandMesh && !playerMesh) {
             // Sichtbarer orangener Player (größer gemacht)
@@ -166,12 +166,16 @@ function handleFullscreenChange() {
             scene.add(playerMesh);
             console.log("DEBUG: Sichtbarer orangener Player auf Insel-Oberfläche hinzugefügt bei y=" + originalPlayerY);
         }
+        if (playerMesh && controls) {
+            // Kamera hinter Player setzen
+            updateCameraPosition();
+        }
         renderer.setSize(window.innerWidth, window.innerHeight);
         camera.aspect = window.innerWidth / window.innerHeight;
         camera.updateProjectionMatrix();
         console.log(`DEBUG: Vollbild-Größe gesetzt: ${window.innerWidth}x${window.innerHeight}.`);
     } else {
-        // Vollbild beendet: Rotation starten und Player entfernen
+        // Vollbild beendet: Rotation starten, Player entfernen, Kamera zurück
         isRotating = true;
         if (playerMesh) {
             scene.remove(playerMesh);
@@ -180,10 +184,24 @@ function handleFullscreenChange() {
             playerMesh = null;
             console.log("DEBUG: Sichtbarer orangener Player entfernt.");
         }
+        if (controls) {
+            controls.target.set(0, 0, 0); // Zurück zu Mitte
+        }
+        camera.position.set(250, 250, 250); // Zurück zur normalen Position
+        camera.lookAt(0, 0, 0);
         renderer.setSize(800, 600);
         camera.aspect = 800 / 600;
         camera.updateProjectionMatrix();
         console.log("DEBUG: Normale Größe wiederhergestellt: 800x600.");
+    }
+}
+
+function updateCameraPosition() {
+    if (playerMesh && controls) {
+        // Kamera hinter Player positionieren (schräg oben)
+        const offset = new THREE.Vector3(0, 20, 30); // Höhe 20, Distanz 30 hinter
+        camera.position.copy(playerMesh.position).add(offset);
+        controls.target.copy(playerMesh.position);
     }
 }
 
@@ -205,6 +223,11 @@ function animate() {
         if (moveBackward) playerMesh.position.z += moveSpeed; // S: Rückwärts
         if (moveLeft) playerMesh.position.x -= moveSpeed; // A: Links
         if (moveRight) playerMesh.position.x += moveSpeed; // D: Rechts
+
+        // Kamera-Position aktualisieren im Vollbild
+        if (document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement) {
+            updateCameraPosition();
+        }
 
         // Schwerkraft für Springen
         velocityY += gravity;
