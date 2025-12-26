@@ -270,23 +270,13 @@ function animate() {
 
         // Richtung drehen basierend auf Player-Rotation
         direction.applyAxisAngle(new THREE.Vector3(0, 1, 0), playerMesh.rotation.y);
-        // Position aktualisieren
-        playerMesh.position.add(direction.multiplyScalar(moveSpeed));
 
-        // Horizontale Kollisionen mit Insel: Bewegung rückgängig machen, wenn außerhalb (immer, auch im Wasser)
-        if (islandMesh) {
-            const x = Math.abs(playerMesh.position.x);
-            const z = Math.abs(playerMesh.position.z);
-            let outOfBounds = false;
-            if (islandMesh.geometry.parameters.width === 50) { // Quadrat
-                if (x > 25 || z > 25) outOfBounds = true;
-            } else if (islandMesh.geometry.parameters.width === 100) { // Rechteck
-                if (x > 50 || z > 25) outOfBounds = true;
-            }
-            if (outOfBounds) {
-                // Bewegung rückgängig machen
-                playerMesh.position.sub(direction.multiplyScalar(moveSpeed));
-            }
+        // Horizontale Kollision: Raycast in Bewegungsrichtung
+        const raycaster = new THREE.Raycaster(playerMesh.position, direction.clone().normalize());
+        const intersects = raycaster.intersectObject(islandMesh);
+        if (intersects.length === 0 || intersects[0].distance >= moveSpeed) {
+            // Kein Hindernis oder weit weg, bewegen
+            playerMesh.position.add(direction.multiplyScalar(moveSpeed));
         }
 
         // Kamera-Position und Player-Drehung aktualisieren im Vollbild
@@ -300,13 +290,10 @@ function animate() {
         velocityY += gravity;
         playerMesh.position.y += velocityY;
 
-        // Kollisionen: Insel mit Raycast (nur nahe der Oberfläche), Wasser und Boden mit einfachen Checks
-        if (velocityY < 0 && playerMesh.position.y < originalPlayerY + 2) { // Smoother, nicht zu früh stoppen
-            const raycaster = new THREE.Raycaster();
-            raycaster.set(playerMesh.position.clone(), new THREE.Vector3(0, -1, 0));
-
-            // Insel-Kollision
-            const islandIntersects = raycaster.intersectObject(islandMesh);
+        // Vertikale Kollision: Insel nur sehr nahe der Oberfläche (smoother Springen)
+        if (velocityY < 0 && playerMesh.position.y < originalPlayerY + 0.1) {
+            const vertRaycaster = new THREE.Raycaster(playerMesh.position.clone(), new THREE.Vector3(0, -1, 0));
+            const islandIntersects = vertRaycaster.intersectObject(islandMesh);
             if (islandIntersects.length > 0) {
                 playerMesh.position.y = islandIntersects[0].point.y + 0.5;
                 velocityY = 0;
