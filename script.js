@@ -273,6 +273,22 @@ function animate() {
         // Position aktualisieren
         playerMesh.position.add(direction.multiplyScalar(moveSpeed));
 
+        // Horizontale Kollisionen mit Insel: Bewegung rückgängig machen, wenn außerhalb
+        if (islandMesh) {
+            const x = Math.abs(playerMesh.position.x);
+            const z = Math.abs(playerMesh.position.z);
+            let outOfBounds = false;
+            if (islandMesh.geometry.parameters.width === 50) { // Quadrat
+                if (x > 25 || z > 25) outOfBounds = true;
+            } else if (islandMesh.geometry.parameters.width === 100) { // Rechteck
+                if (x > 50 || z > 25) outOfBounds = true;
+            }
+            if (outOfBounds) {
+                // Bewegung rückgängig machen
+                playerMesh.position.sub(direction.multiplyScalar(moveSpeed));
+            }
+        }
+
         // Kamera-Position und Player-Drehung aktualisieren im Vollbild
         if (isFullscreen) {
             updateCameraPosition();
