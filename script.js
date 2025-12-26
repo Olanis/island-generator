@@ -109,6 +109,15 @@ function init() {
     scene.add(seaMesh);
     console.log("DEBUG: Durchsichtige Meer-Ebene hinzugefügt.");
 
+    // Meeresgrund hinzufügen (bei y=-50, ca. Inselhöhe tief)
+    const groundGeometry = new THREE.PlaneGeometry(5000, 5000);
+    const groundMaterial = new THREE.MeshLambertMaterial({ color: 0xc2b280 }); // Sandfarbe für Boden
+    const groundMesh = new THREE.Mesh(groundGeometry, groundMaterial);
+    groundMesh.rotation.x = -Math.PI / 2; // Flach legen
+    groundMesh.position.y = -50; // Tief wie Insel dick
+    scene.add(groundMesh);
+    console.log("DEBUG: Meeresgrund hinzugefügt bei y=-50.");
+
     // Automatisch erste Insel generieren beim Start
     generateIsland();
     console.log("DEBUG: Erste Insel automatisch generiert.");
@@ -263,10 +272,20 @@ function animate() {
             playerMesh.rotation.y = cameraRotationY + Math.PI;
         }
 
-        // Schwerkraft für Springen
+        // Schwerkraft: Zieht immer nach unten, aber im Wasser stoppt sie
         velocityY += gravity;
         playerMesh.position.y += velocityY;
-        if (playerMesh.position.y <= originalPlayerY) {
+
+        if (playerMesh.position.y < 0) {
+            // Im Wasser: Schwerkraft aus, bleibt auf Wasseroberfläche (halb drin)
+            playerMesh.position.y = 0;
+            velocityY = 0;
+        } else if (playerMesh.position.y <= -50) {
+            // Auf Meeresgrund: Stoppen
+            playerMesh.position.y = -50;
+            velocityY = 0;
+        } else if (playerMesh.position.y <= originalPlayerY) {
+            // Auf Insel: Zurück auf Oberfläche
             playerMesh.position.y = originalPlayerY;
             velocityY = 0;
         }
