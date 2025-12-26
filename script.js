@@ -210,7 +210,7 @@ function handleFullscreenChange() {
         console.log(`DEBUG: Vollbild-Größe gesetzt: ${window.innerWidth}x${window.innerHeight}.`);
     } else {
         isFullscreen = false;
-        // Vollbild beendet: Rotation starten, Player entfernen, Kamera zurück, Controls aktivieren
+        // Vollbild beendet: Rotation starten, Player entfernen, alles resetten
         isRotating = true;
         if (playerMesh) {
             scene.remove(playerMesh);
@@ -220,12 +220,15 @@ function handleFullscreenChange() {
             console.log("DEBUG: Sichtbarer orangener Player entfernt.");
         }
         if (controls) controls.enabled = true; // OrbitControls wieder aktivieren
+        // Vollständiges Reset: Kamera, Rotation, etc.
         camera.position.set(250, 250, 250); // Zurück zur normalen Position
         camera.lookAt(0, 0, 0);
+        cameraRotationY = 0; // Reset Kamerarotation
+        velocityY = 0; // Reset Geschwindigkeit
         renderer.setSize(800, 600);
         camera.aspect = 800 / 600;
         camera.updateProjectionMatrix();
-        console.log("DEBUG: Normale Größe wiederhergestellt: 800x600.");
+        console.log("DEBUG: Vollständiges Reset beim Exit aus Vollbild.");
     }
 }
 
@@ -276,7 +279,7 @@ function animate() {
         velocityY += gravity;
         playerMesh.position.y += velocityY;
 
-        // Raycast für Kollisionen nur wenn fallend
+        // Kollisionen: Insel mit Raycast, Wasser und Boden mit einfachen Checks
         if (velocityY < 0) {
             const raycaster = new THREE.Raycaster();
             raycaster.set(playerMesh.position.clone(), new THREE.Vector3(0, -1, 0));
@@ -287,20 +290,18 @@ function animate() {
                 playerMesh.position.y = islandIntersects[0].point.y + 0.5;
                 velocityY = 0;
             }
+        }
 
-            // Wasser-Kollision
-            const seaIntersects = raycaster.intersectObject(seaMesh);
-            if (seaIntersects.length > 0) {
-                playerMesh.position.y = 0;
-                velocityY = 0;
-            }
+        // Wasser-Kollision (einfach: wenn unter Wasser, auf Oberfläche)
+        if (playerMesh.position.y < 0) {
+            playerMesh.position.y = 0;
+            velocityY = 0;
+        }
 
-            // Boden-Kollision
-            const groundIntersects = raycaster.intersectObject(groundMesh);
-            if (groundIntersects.length > 0) {
-                playerMesh.position.y = -50;
-                velocityY = 0;
-            }
+        // Boden-Kollision (einfach: wenn unter Boden, auf Boden)
+        if (playerMesh.position.y < -50) {
+            playerMesh.position.y = -50;
+            velocityY = 0;
         }
     }
 
