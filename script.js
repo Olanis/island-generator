@@ -273,7 +273,7 @@ function animate() {
         // Position aktualisieren
         playerMesh.position.add(direction.multiplyScalar(moveSpeed));
 
-        // Horizontale Kollisionen mit Insel: Bewegung rückgängig machen, wenn außerhalb
+        // Horizontale Kollisionen mit Insel: Bewegung rückgängig machen, wenn außerhalb (immer, auch im Wasser)
         if (islandMesh) {
             const x = Math.abs(playerMesh.position.x);
             const z = Math.abs(playerMesh.position.z);
@@ -300,8 +300,8 @@ function animate() {
         velocityY += gravity;
         playerMesh.position.y += velocityY;
 
-        // Kollisionen: Insel mit Raycast, Wasser und Boden mit einfachen Checks
-        if (velocityY < 0) {
+        // Kollisionen: Insel mit Raycast (nur nahe der Oberfläche), Wasser und Boden mit einfachen Checks
+        if (velocityY < 0 && playerMesh.position.y < originalPlayerY + 2) { // Smoother, nicht zu früh stoppen
             const raycaster = new THREE.Raycaster();
             raycaster.set(playerMesh.position.clone(), new THREE.Vector3(0, -1, 0));
 
