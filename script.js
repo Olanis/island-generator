@@ -5,6 +5,7 @@ let scene, camera, renderer, islandMesh, seaMesh, groundMesh, controls, isRotati
 let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
 const moveSpeed = 0.5; // Geschwindigkeit der Bewegung
 let isFullscreen = false, rightMouseDown = false, lastMouseX = 0, cameraRotationY = 0;
+let islandBox; // Box für Insel-Kollision
 
 function init() {
     console.log("DEBUG: init() aufgerufen – Three.js Setup starten.");
@@ -154,6 +155,10 @@ function generateIsland() {
     islandMesh.position.y = 0; // Mitte auf Wasseroberfläche – untere Hälfte unter Wasser
     scene.add(islandMesh);
 
+    // Box für Kollision erstellen
+    islandBox = new THREE.Box3().setFromObject(islandMesh);
+    console.log("DEBUG: Insel-Box für Kollision erstellt.");
+
     console.log("DEBUG: Große Insel-Mesh zur Szene hinzugefügt (halb im Wasser).");
 
     // Rendern
@@ -188,7 +193,7 @@ function exitFullscreen() {
 
 function handleFullscreenChange() {
     console.log("DEBUG: handleFullscreenChange() aufgerufen – Größe, Rotation und Player anpassen.");
-    if (document.fullscreenElement || document.webkitElement || document.msFullscreenElement) {
+    if (document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement) {
         isFullscreen = true;
         // Im Vollbild: Rotation stoppen, Player hinzufügen, Kamera hinter Player, Controls deaktivieren
         isRotating = false;
@@ -271,12 +276,13 @@ function animate() {
         // Richtung drehen basierend auf Player-Rotation
         direction.applyAxisAngle(new THREE.Vector3(0, 1, 0), playerMesh.rotation.y);
 
-        // Horizontale Kollision: Raycast in Bewegungsrichtung
-        const raycaster = new THREE.Raycaster(playerMesh.position, direction.clone().normalize());
-        const intersects = raycaster.intersectObject(islandMesh);
-        if (intersects.length === 0 || intersects[0].distance >= moveSpeed) {
-            // Kein Hindernis oder weit weg, bewegen
-            playerMesh.position.add(direction.multiplyScalar(moveSpeed));
+        // Horizontale Kollision mit Box
+        const testDirection = direction.clone().multiplyScalar(moveSpeed);
+        const originalPosition = playerMesh.position.clone();
+        playerMesh.position.add(testDirection);
+        const playerBox = new THREE.Box3().setFromObject(playerMesh);
+        if (islandBox && playerBox.intersectsBox(islandBox)) {
+            playerMesh.position.copy(originalPosition); // Zurück, wenn Kollision
         }
 
         // Kamera-Position und Player-Drehung aktualisieren im Vollbild
