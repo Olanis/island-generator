@@ -1,7 +1,7 @@
 // Einfacher Insel-Generator mit Three.js (WebGL) – Insel schwimmt halb im Wasser
 // Kein Import nötig, THREE ist global geladen
 
-let scene, camera, renderer, islandMesh, seaMesh, groundMesh, controls, isRotating = true, playerMesh, originalPlayerY, velocityY = 0, gravity = -0.005, jumpStrength = 0.1;
+let scene, camera, renderer, islandMesh, seaMesh, groundMesh, controls, isRotating = true, playerMesh, originalPlayerY, velocityY = 0, gravity = -0.01, jumpStrength = 0.1414; // Schwerkraft verdoppelt, Sprunghöhe gleich
 let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
 const moveSpeed = 0.5; // Geschwindigkeit der Bewegung
 let isFullscreen = false, rightMouseDown = false, lastMouseX = 0, cameraRotationY = 0;
@@ -188,7 +188,7 @@ function exitFullscreen() {
 
 function handleFullscreenChange() {
     console.log("DEBUG: handleFullscreenChange() aufgerufen – Größe, Rotation und Player anpassen.");
-    if (document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement) {
+    if (document.fullscreenElement || document.webkitElement || document.msFullscreenElement) {
         isFullscreen = true;
         // Im Vollbild: Rotation stoppen, Player hinzufügen, Kamera hinter Player, Controls deaktivieren
         isRotating = false;
