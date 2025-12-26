@@ -27,12 +27,12 @@ function init() {
         controls = new THREE.OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
         controls.dampingFactor = 0.05;
-        // Maus-Buttons tauschen: Linke für Pannen/Zoomen, Rechte für Rotieren
+        // Maus-Buttons: Linke deaktiviert, Rechte für Rotieren
         controls.mouseButtons = {
-            LEFT: THREE.MOUSE.PAN,
+            LEFT: null, // Deaktiviert
             RIGHT: THREE.MOUSE.ROTATE
         };
-        console.log("DEBUG: OrbitControls hinzugefügt – Maus zum Drehen/Zoomen verwenden (getauscht).");
+        console.log("DEBUG: OrbitControls hinzugefügt – Maus zum Drehen verwenden (Linke deaktiviert).");
     };
     document.head.appendChild(script);
 
@@ -153,7 +153,7 @@ function exitFullscreen() {
 function handleFullscreenChange() {
     console.log("DEBUG: handleFullscreenChange() aufgerufen – Größe, Rotation und Player anpassen.");
     if (document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement) {
-        // Im Vollbild: Rotation stoppen, Player hinzufügen, Kamera hinter Player, Controls deaktivieren
+        // Im Vollbild: Rotation stoppen, Player hinzufügen, Kamera hinter Player, Controls aktivieren mit nur Rechtsklick für Rotate
         isRotating = false;
         if (islandMesh && !playerMesh) {
             // Sichtbarer orangener Player (größer gemacht)
@@ -170,13 +170,19 @@ function handleFullscreenChange() {
             // Kamera hinter Player setzen
             updateCameraPosition();
         }
-        if (controls) controls.enabled = false; // Alle Controls deaktivieren
+        if (controls) {
+            controls.enabled = true; // Controls aktivieren für Vollbild
+            controls.mouseButtons = {
+                LEFT: null, // Deaktiviert
+                RIGHT: THREE.MOUSE.ROTATE // Nur Rechtsklick rotiert
+            };
+        }
         renderer.setSize(window.innerWidth, window.innerHeight);
         camera.aspect = window.innerWidth / window.innerHeight;
         camera.updateProjectionMatrix();
         console.log(`DEBUG: Vollbild-Größe gesetzt: ${window.innerWidth}x${window.innerHeight}.`);
     } else {
-        // Vollbild beendet: Rotation starten, Player entfernen, Kamera zurück, Controls aktivieren
+        // Vollbild beendet: Rotation starten, Player entfernen, Kamera zurück, Controls deaktivieren und zurücksetzen
         isRotating = true;
         if (playerMesh) {
             scene.remove(playerMesh);
@@ -187,7 +193,11 @@ function handleFullscreenChange() {
         }
         if (controls) {
             controls.target.set(0, 0, 0); // Zurück zu Mitte
-            controls.enabled = true; // Controls wieder aktivieren
+            controls.enabled = false; // Controls deaktivieren
+            controls.mouseButtons = {
+                LEFT: THREE.MOUSE.PAN, // Zurücksetzen
+                RIGHT: THREE.MOUSE.ROTATE
+            };
         }
         camera.position.set(250, 250, 250); // Zurück zur normalen Position
         camera.lookAt(0, 0, 0);
@@ -216,7 +226,7 @@ function jumpPlayer() {
 
 function animate() {
     requestAnimationFrame(animate);
-    if (controls) controls.update(); // Für Maus-Steuerung (aber nur wenn enabled)
+    if (controls) controls.update(); // Für Maus-Steuerung (aktiviert im Vollbild)
     if (islandMesh && isRotating) islandMesh.rotation.y += 0.01; // Drehung nur wenn nicht im Vollbild
 
     // Player-Bewegung mit WASD
