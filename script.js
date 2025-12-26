@@ -1,29 +1,26 @@
 // Einfacher Insel-Generator mit Three.js (WebGL) – Insel schwimmt halb im Wasser
-// Kein Import nötig, THREE ist global geladen
-// Rapier-Physik integriert
+// Cannon.js für Physik integriert
 
-let scene, camera, renderer, islandMesh, seaMesh, groundMesh, controls, isRotating = true, playerMesh, originalPlayerY, velocityY = 0, gravity = -0.01, jumpStrength = 0.1414; // Schwerkraft verdoppelt, Sprunghöhe gleich
+let scene, camera, renderer, islandMesh, seaMesh, groundMesh, controls, isRotating = true, playerMesh, originalPlayerY;
 let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
-const moveSpeed = 0.5; // Geschwindigkeit der Bewegung
+const moveSpeed = 0.5;
 let isFullscreen = false, rightMouseDown = false, lastMouseX = 0, cameraRotationY = 0;
 
-// Rapier-Physik
-let RAPIER, world, islandBody, playerBody, groundBody;
+// Cannon.js Physik
+let world, islandBody, playerBody, groundBody;
 
-async function init() {
-    console.log("DEBUG: init() aufgerufen – Three.js + Rapier Setup starten.");
+function init() {
+    console.log("DEBUG: init() aufgerufen – Three.js + Cannon.js Setup starten.");
 
-    // Rapier laden
+    // Cannon.js laden
     const script = document.createElement('script');
-    script.src = 'https://cdn.jsdelivr.net/npm/@dimforge/rapier3d-compat@0.12.0/rapier.es.js';
-    script.onload = async () => {
-        RAPIER = await import('https://cdn.jsdelivr.net/npm/@dimforge/rapier3d-compat@0.12.0/rapier.es.js');
-        await RAPIER.init(); // Initialisiere Rapier
-        console.log("DEBUG: Rapier geladen und initialisiert.");
-
-        // Physik-Welt erstellen
-        world = new RAPIER.World({ x: 0, y: -9.82, z: 0 }); // Gravity
-        console.log("DEBUG: Rapier-Welt erstellt mit Gravity.");
+    script.src = 'https://cdn.jsdelivr.net/npm/cannon@0.6.2/build/cannon.min.js';
+    script.onload = function() {
+        // Physik-Welt
+        world = new CANNON.World();
+        world.gravity.set(0, -9.82, 0);
+        world.broadphase = new CANNON.NaiveBroadphase();
+        world.solver.iterations = 10;
 
         // Szene, Kamera, Renderer
         scene = new THREE.Scene();
@@ -117,10 +114,12 @@ async function init() {
         groundMesh.position.y = -50;
         scene.add(groundMesh);
 
-        // Boden-Body (statisch)
-        const groundShape = new RAPIER.Cuboid(2500, 0.1, 2500);
-        groundBody = world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(0, -50.1, 0));
-        world.createCollider(RAPIER.ColliderDesc.cuboid(2500, 0.1, 2500), groundBody);
+        // Boden-Body
+        groundBody = new CANNON.Body({ mass: 0, type: CANNON.Body.KINEMATIC });
+        groundBody.addShape(new CANNON.Plane());
+        groundBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2);
+        groundBody.position.set(0, -50, 0);
+        world.addBody(groundBody);
 
         // Insel generieren
         generateIsland();
@@ -139,17 +138,17 @@ function generateIsland() {
         scene.remove(islandMesh);
         islandMesh.geometry.dispose();
         islandMesh.material.dispose();
-        world.removeRigidBody(islandBody);
+        world.removeBody(islandBody);
     }
 
     const shape = Math.random() > 0.5 ? 'quadrat' : 'rechteck';
-    let geometry, colliderShape;
+    let geometry, shapeCannon;
     if (shape === 'quadrat') {
         geometry = new THREE.BoxGeometry(50, 50, 50);
-        colliderShape = new RAPIER.Cuboid(25, 25, 25);
+        shapeCannon = new CANNON.Box(new CANNON.Vec3(25, 25, 25));
     } else {
         geometry = new THREE.BoxGeometry(100, 50, 50);
-        colliderShape = new RAPIER.Cuboid(50, 25, 25);
+        shapeCannon = new CANNON.Box(new CANNON.Vec3(50, 25, 25));
     }
 
     const material = new THREE.MeshLambertMaterial({ color: 0x228b22 });
@@ -157,9 +156,11 @@ function generateIsland() {
     islandMesh.position.y = 0;
     scene.add(islandMesh);
 
-    // Insel-Body (statisch)
-    islandBody = world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(0, 0, 0));
-    world.createCollider(colliderShape, islandBody);
+    // Insel-Body
+    islandBody = new CANNON.Body({ mass: 0, type: CANNON.Body.KINEMATIC });
+    islandBody.addShape(shapeCannon);
+    islandBody.position.set(0, 0, 0);
+    world.addBody(islandBody);
 
     renderer.render(scene, camera);
 }
@@ -186,10 +187,11 @@ function handleFullscreenChange() {
             playerMesh.position.set(0, 26, 0);
             scene.add(playerMesh);
 
-            // Player-Body (dynamisch)
-            const playerShape = new RAPIER.Cuboid(0.5, 0.5, 0.25);
-            playerBody = world.createRigidBody(RAPIER.RigidBodyDesc.dynamic().setTranslation(0, 26, 0));
-            world.createCollider(RAPIER.ColliderDesc.cuboid(0.5, 0.5, 0.25), playerBody);
+            // Player-Body
+            playerBody = new CANNON.Body({ mass: 1 });
+            playerBody.addShape(new CANNON.Box(new CANNON.Vec3(0.5, 0.5, 0.25)));
+            playerBody.position.set(0, 26, 0);
+            world.addBody(playerBody);
         }
         if (controls) controls.enabled = false;
         renderer.setSize(window.innerWidth, window.innerHeight);
@@ -203,7 +205,7 @@ function handleFullscreenChange() {
             playerMesh.geometry.dispose();
             playerMesh.material.dispose();
             playerMesh = null;
-            world.removeRigidBody(playerBody);
+            world.removeBody(playerBody);
             playerBody = null;
         }
         if (controls) controls.enabled = true;
@@ -227,7 +229,7 @@ function updateCameraPosition() {
 
 function jumpPlayer() {
     if (playerBody) {
-        playerBody.applyImpulse({ x: 0, y: 0.2, z: 0 }, true); // Sprung-Impuls
+        playerBody.velocity.y = 2; // Sprung
     }
 }
 
@@ -237,34 +239,26 @@ function animate() {
     if (islandMesh && isRotating) islandMesh.rotation.y += 0.01;
 
     // Physik Schritt
-    world.step();
+    world.step(1 / 60);
 
-    // Sync Meshes mit Bodies
+    // Sync Meshes
     if (islandBody) {
-        const pos = islandBody.translation();
-        islandMesh.position.set(pos.x, pos.y, pos.z);
-        const rot = islandBody.rotation();
-        islandMesh.quaternion.set(rot.x, rot.y, rot.z, rot.w);
+        islandMesh.position.copy(islandBody.position);
+        islandMesh.quaternion.copy(islandBody.quaternion);
     }
     if (groundBody) {
-        const pos = groundBody.translation();
-        groundMesh.position.set(pos.x, pos.y, pos.z);
+        groundMesh.position.copy(groundBody.position);
+        groundMesh.quaternion.copy(groundBody.quaternion);
     }
     if (playerBody && playerMesh) {
-        const pos = playerBody.translation();
-        playerMesh.position.set(pos.x, pos.y, pos.z);
-        const rot = playerBody.rotation();
-        playerMesh.quaternion.set(rot.x, rot.y, rot.z, rot.w);
+        playerMesh.position.copy(playerBody.position);
+        playerMesh.quaternion.copy(playerBody.quaternion);
 
         // Bewegung
-        let impulse = { x: 0, y: 0, z: 0 };
-        if (moveForward) impulse.z += moveSpeed;
-        if (moveBackward) impulse.z -= moveSpeed;
-        if (moveLeft) impulse.x += moveSpeed;
-        if (moveRight) impulse.x -= moveSpeed;
-        if (impulse.x || impulse.z) {
-            playerBody.applyImpulse(impulse, true);
-        }
+        if (moveForward) playerBody.velocity.z = moveSpeed;
+        if (moveBackward) playerBody.velocity.z = -moveSpeed;
+        if (moveLeft) playerBody.velocity.x = moveSpeed;
+        if (moveRight) playerBody.velocity.x = -moveSpeed;
 
         // Kamera-Update
         if (isFullscreen) {
@@ -272,10 +266,10 @@ function animate() {
             playerMesh.rotation.y = cameraRotationY + Math.PI;
         }
 
-        // Wasser-"Kollision": Wenn unter Wasser, auf Oberfläche
+        // Wasser: Auf Oberfläche
         if (playerMesh.position.y < 0) {
-            playerBody.setTranslation({ x: pos.x, y: 0, z: pos.z }, true);
-            playerBody.setLinvel({ x: 0, y: 0, z: 0 }, true);
+            playerBody.position.y = 0;
+            playerBody.velocity.y = 0;
         }
     }
 
