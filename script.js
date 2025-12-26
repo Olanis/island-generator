@@ -193,9 +193,12 @@ function handleFullscreenChange() {
             playerMesh.position.set(0, 26, 0);
             scene.add(playerMesh);
 
-            // Player-Body
+            // Player-Body (dynamic mit locked Rotation und Damping)
             const playerRigidBodyDesc = RAPIER.RigidBodyDesc.dynamic().setTranslation(0, 26, 0);
             playerBody = world.createRigidBody(playerRigidBodyDesc);
+            playerBody.lockRotations(true, false); // x und z locken, y frei für Camera
+            playerBody.setAngularDamping(10);
+            playerBody.setLinearDamping(0.5);
             const playerColliderDesc = RAPIER.ColliderDesc.cuboid(0.5, 0.5, 0.25);
             world.createCollider(playerColliderDesc, playerBody);
         }
