@@ -255,17 +255,16 @@ function jumpPlayer() {
     }
 }
 
-function clampToIsland() {
-    if (!islandMesh || !playerMesh) return;
-    const x = playerMesh.position.x;
-    const z = playerMesh.position.z;
+function isWithinIsland(pos) {
+    if (!islandMesh) return false;
+    const x = Math.abs(pos.x);
+    const z = Math.abs(pos.z);
     if (islandMesh.geometry.parameters.width === 50) { // Quadrat
-        playerMesh.position.x = Math.max(-25, Math.min(25, x));
-        playerMesh.position.z = Math.max(-25, Math.min(25, z));
+        return x <= 25 && z <= 25;
     } else if (islandMesh.geometry.parameters.width === 100) { // Rechteck
-        playerMesh.position.x = Math.max(-50, Math.min(50, x));
-        playerMesh.position.z = Math.max(-25, Math.min(25, z));
+        return x <= 50 && z <= 25;
     }
+    return false;
 }
 
 function animate() {
@@ -283,11 +282,12 @@ function animate() {
 
         // Richtung drehen basierend auf Player-Rotation
         direction.applyAxisAngle(new THREE.Vector3(0, 1, 0), playerMesh.rotation.y);
-        // Position aktualisieren
-        playerMesh.position.add(direction.multiplyScalar(moveSpeed));
 
-        // Position an Insel-Boundaries klammern (einfache Kollision)
-        clampToIsland();
+        // Neue Position berechnen und prüfen
+        const newPos = playerMesh.position.clone().add(direction.multiplyScalar(moveSpeed));
+        if (isWithinIsland(newPos)) {
+            playerMesh.position.copy(newPos);
+        }
 
         // Kamera-Position und Player-Drehung aktualisieren im Vollbild
         if (isFullscreen) {
