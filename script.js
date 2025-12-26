@@ -122,10 +122,10 @@ async function init() {
         groundMesh.position.y = -50;
         scene.add(groundMesh);
 
-        // Boden-Body (Halfspace für korrekte Plane)
-        const groundRigidBodyDesc = RAPIER.RigidBodyDesc.fixed().setTranslation(0, -50, 0);
+        // Boden-Body (dünne Box als Plane)
+        const groundRigidBodyDesc = RAPIER.RigidBodyDesc.fixed().setTranslation(0, -50.05, 0);
         groundBody = world.createRigidBody(groundRigidBodyDesc);
-        const groundColliderDesc = RAPIER.ColliderDesc.halfspace(new RAPIER.Vector3(0, 1, 0));
+        const groundColliderDesc = RAPIER.ColliderDesc.cuboid(2500, 0.1, 2500);
         world.createCollider(groundColliderDesc, groundBody);
 
         // Insel generieren
