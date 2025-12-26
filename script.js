@@ -7,22 +7,21 @@ const moveSpeed = 0.5;
 let isFullscreen = false, rightMouseDown = false, lastMouseX = 0, cameraRotationY = 0;
 
 // PhysX
-let PhysX, physics, islandBody, playerBody, groundBody;
+let PhysX, physics, physxScene, islandBody, playerBody, groundBody;
 
 async function init() {
     console.log("DEBUG: init() aufgerufen – Three.js + PhysX Setup starten.");
 
-    // PhysX.js laden
-    const script = document.createElement('script');
-    script.src = 'https://cdn.jsdelivr.net/npm/@playcanvas/physx@0.6.0/dist/PhysX.js';
-    script.onload = async function() {
-        PhysX = await PhysX();
-        physics = await PhysX.Px.CreateFoundation(PhysX.PX_PHYSICS_VERSION, new PhysX.PxDefaultAllocator(), new PhysX.PxDefaultErrorCallback());
-        const physics = await PhysX.Px.CreatePhysics(PhysX.PX_PHYSICS_VERSION, PhysX.Px.GetFoundation(), new PhysX.PxTolerancesScale());
-        const sceneDesc = PhysX.Px.SceneDesc(PhysX.Px.GetTolerancesScale());
-        sceneDesc.gravity = new PhysX.PxVec3(0, -9.82, 0);
-        const cooking = PhysX.Px.CreateCooking(PhysX.PX_PHYSICS_VERSION, PhysX.Px.GetFoundation(), new PhysX.PxCookingParams(new PhysX.PxTolerancesScale()));
-        const physxScene = physics.createScene(sceneDesc);
+    try {
+        // PhysX.js laden (mit WASM)
+        const PhysXModule = await import('https://cdn.jsdelivr.net/npm/@playcanvas/physx@0.6.0/dist/PhysX.js');
+        PhysX = PhysXModule.default || PhysXModule;
+
+        await PhysX.loadPhysics();
+        physics = PhysX.Physics();
+        physxScene = physics.createScene();
+
+        console.log("DEBUG: PhysX geladen und initialisiert.");
 
         // Szene, Kamera, Renderer
         scene = new THREE.Scene();
@@ -117,10 +116,13 @@ async function init() {
         scene.add(groundMesh);
 
         // Boden-Body
-        const groundShape = PhysX.Px.BoxGeometry(2500, 0.1, 2500);
-        groundBody = physics.createRigidStatic(new PhysX.PxTransform(new PhysX.PxVec3(0, -50.1, 0), new PhysX.PxQuat(0, 0, 0, 1)));
-        groundBody.createShape(groundShape, physics.createMaterial(0.5, 0.5, 0.6));
-        physxScene.addActor(groundBody);
+        const groundShape = new PhysX.BoxGeometry(2500, 0.1, 2500);
+        groundBody = physics.createRigidStatic({
+            type: 'static',
+            shapes: [{ type: 'box', extents: { x: 2500, y: 0.1, z: 2500 } }],
+            position: { x: 0, y: -50.1, z: 0 }
+        });
+        physxScene.addBody(groundBody);
 
         // Insel generieren
         generateIsland();
@@ -128,8 +130,9 @@ async function init() {
         // Animate starten
         animate();
         console.log("DEBUG: Setup fertig.");
-    };
-    document.head.appendChild(script);
+    } catch (error) {
+        console.error("PhysX Fehler:", error);
+    }
 }
 
 function generateIsland() {
@@ -139,17 +142,17 @@ function generateIsland() {
         scene.remove(islandMesh);
         islandMesh.geometry.dispose();
         islandMesh.material.dispose();
-        physxScene.removeActor(islandBody);
+        physxScene.removeBody(islandBody);
     }
 
     const shape = Math.random() > 0.5 ? 'quadrat' : 'rechteck';
-    let geometry, shapePhysX;
+    let geometry, extents;
     if (shape === 'quadrat') {
         geometry = new THREE.BoxGeometry(50, 50, 50);
-        shapePhysX = PhysX.Px.BoxGeometry(25, 25, 25);
+        extents = { x: 25, y: 25, z: 25 };
     } else {
         geometry = new THREE.BoxGeometry(100, 50, 50);
-        shapePhysX = PhysX.Px.BoxGeometry(50, 25, 25);
+        extents = { x: 50, y: 25, z: 25 };
     }
 
     const material = new THREE.MeshLambertMaterial({ color: 0x228b22 });
@@ -158,9 +161,12 @@ function generateIsland() {
     scene.add(islandMesh);
 
     // Insel-Body
-    islandBody = physics.createRigidStatic(new PhysX.PxTransform(new PhysX.PxVec3(0, 0, 0), new PhysX.PxQuat(0, 0, 0, 1)));
-    islandBody.createShape(shapePhysX, physics.createMaterial(0.5, 0.5, 0.6));
-    physxScene.addActor(islandBody);
+    islandBody = physics.createRigidStatic({
+        type: 'static',
+        shapes: [{ type: 'box', extents }],
+        position: { x: 0, y: 0, z: 0 }
+    });
+    physxScene.addBody(islandBody);
 
     renderer.render(scene, camera);
 }
@@ -188,11 +194,13 @@ function handleFullscreenChange() {
             scene.add(playerMesh);
 
             // Player-Body
-            const playerShape = PhysX.Px.BoxGeometry(0.5, 0.5, 0.25);
-            playerBody = physics.createRigidDynamic(new PhysX.PxTransform(new PhysX.PxVec3(0, 26, 0), new PhysX.PxQuat(0, 0, 0, 1)));
-            playerBody.createShape(playerShape, physics.createMaterial(0.5, 0.5, 0.6));
-            playerBody.setMass(1);
-            physxScene.addActor(playerBody);
+            playerBody = physics.createRigidDynamic({
+                type: 'dynamic',
+                shapes: [{ type: 'box', extents: { x: 0.5, y: 0.5, z: 0.25 } }],
+                position: { x: 0, y: 26, z: 0 },
+                mass: 1
+            });
+            physxScene.addBody(playerBody);
         }
         if (controls) controls.enabled = false;
         renderer.setSize(window.innerWidth, window.innerHeight);
@@ -206,7 +214,7 @@ function handleFullscreenChange() {
             playerMesh.geometry.dispose();
             playerMesh.material.dispose();
             playerMesh = null;
-            physxScene.removeActor(playerBody);
+            physxScene.removeBody(playerBody);
             playerBody = null;
         }
         if (controls) controls.enabled = true;
@@ -230,8 +238,7 @@ function updateCameraPosition() {
 
 function jumpPlayer() {
     if (playerBody) {
-        const impulse = new PhysX.PxVec3(0, 2, 0);
-        playerBody.addForce(impulse, PhysX.PxForceMode.eIMPULSE);
+        playerBody.addForce({ x: 0, y: 2, z: 0 });
     }
 }
 
@@ -242,29 +249,28 @@ function animate() {
 
     // Physik Schritt
     physxScene.simulate(1 / 60);
-    physxScene.fetchResults(true);
+    physxScene.update();
 
     // Sync Meshes
     if (islandBody) {
-        const transform = islandBody.getGlobalPose();
-        islandMesh.position.set(transform.p.x, transform.p.y, transform.p.z);
-        islandMesh.quaternion.set(transform.q.x, transform.q.y, transform.q.z, transform.q.w);
+        islandMesh.position.copy(islandBody.position);
+        islandMesh.quaternion.copy(islandBody.quaternion);
     }
     if (groundBody) {
-        const transform = groundBody.getGlobalPose();
-        groundMesh.position.set(transform.p.x, transform.p.y, transform.p.z);
-        groundMesh.quaternion.set(transform.q.x, transform.q.y, transform.q.z, transform.q.w);
+        groundMesh.position.copy(groundBody.position);
+        groundMesh.quaternion.copy(groundBody.quaternion);
     }
     if (playerBody && playerMesh) {
-        const transform = playerBody.getGlobalPose();
-        playerMesh.position.set(transform.p.x, transform.p.y, transform.p.z);
-        playerMesh.quaternion.set(transform.q.x, transform.q.y, transform.q.z, transform.q.w);
+        playerMesh.position.copy(playerBody.position);
+        playerMesh.quaternion.copy(playerBody.quaternion);
 
         // Bewegung
-        if (moveForward) playerBody.setLinearVelocity(new PhysX.PxVec3(0, playerBody.getLinearVelocity().y, moveSpeed));
-        if (moveBackward) playerBody.setLinearVelocity(new PhysX.PxVec3(0, playerBody.getLinearVelocity().y, -moveSpeed));
-        if (moveLeft) playerBody.setLinearVelocity(new PhysX.PxVec3(moveSpeed, playerBody.getLinearVelocity().y, 0));
-        if (moveRight) playerBody.setLinearVelocity(new PhysX.PxVec3(-moveSpeed, playerBody.getLinearVelocity().y, 0));
+        let velocity = playerBody.velocity;
+        if (moveForward) velocity.z = moveSpeed;
+        if (moveBackward) velocity.z = -moveSpeed;
+        if (moveLeft) velocity.x = moveSpeed;
+        if (moveRight) velocity.x = -moveSpeed;
+        playerBody.velocity = velocity;
 
         // Kamera-Update
         if (isFullscreen) {
@@ -274,8 +280,8 @@ function animate() {
 
         // Wasser: Auf Oberfläche
         if (playerMesh.position.y < 0) {
-            playerBody.setGlobalPose(new PhysX.PxTransform(new PhysX.PxVec3(transform.p.x, 0, transform.p.z), transform.q));
-            playerBody.setLinearVelocity(new PhysX.PxVec3(0, 0, 0));
+            playerBody.position = { x: playerBody.position.x, y: 0, z: playerBody.position.z };
+            playerBody.velocity = { x: 0, y: 0, z: 0 };
         }
     }
 
