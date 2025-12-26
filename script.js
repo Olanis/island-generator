@@ -108,6 +108,10 @@ function init() {
     seaMesh.rotation.x = -Math.PI / 2; // Flach legen
     scene.add(seaMesh);
     console.log("DEBUG: Durchsichtige Meer-Ebene hinzugefügt.");
+
+    // Automatisch erste Insel generieren beim Start
+    generateIsland();
+    console.log("DEBUG: Erste Insel automatisch generiert.");
 }
 
 function generateIsland() {
