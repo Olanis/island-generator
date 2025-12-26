@@ -1,7 +1,7 @@
 // Einfacher Insel-Generator mit Three.js (WebGL) – Insel schwimmt halb im Wasser
 // Kein Import nötig, THREE ist global geladen
 
-let scene, camera, renderer, islandMesh, seaMesh, controls, isRotating = true, playerMesh, originalPlayerY, velocityY = 0, gravity = -0.005, jumpStrength = 0.1;
+let scene, camera, renderer, islandMesh, seaMesh, groundMesh, controls, isRotating = true, playerMesh, originalPlayerY, velocityY = 0, gravity = -0.005, jumpStrength = 0.1;
 let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
 const moveSpeed = 0.5; // Geschwindigkeit der Bewegung
 let isFullscreen = false, rightMouseDown = false, lastMouseX = 0, cameraRotationY = 0;
@@ -112,7 +112,7 @@ function init() {
     // Meeresgrund hinzufügen (bei y=-50, ca. Inselhöhe tief)
     const groundGeometry = new THREE.PlaneGeometry(5000, 5000);
     const groundMaterial = new THREE.MeshLambertMaterial({ color: 0xc2b280 }); // Sandfarbe für Boden
-    const groundMesh = new THREE.Mesh(groundGeometry, groundMaterial);
+    groundMesh = new THREE.Mesh(groundGeometry, groundMaterial);
     groundMesh.rotation.x = -Math.PI / 2; // Flach legen
     groundMesh.position.y = -50; // Tief wie Insel dick
     scene.add(groundMesh);
@@ -247,18 +247,6 @@ function jumpPlayer() {
     }
 }
 
-function isOnIsland() {
-    if (!islandMesh || !playerMesh) return false;
-    const x = Math.abs(playerMesh.position.x);
-    const z = Math.abs(playerMesh.position.z);
-    if (islandMesh.geometry.parameters.width === 50) { // Quadrat
-        return x <= 25 && z <= 25;
-    } else if (islandMesh.geometry.parameters.width === 100) { // Rechteck
-        return x <= 50 && z <= 25;
-    }
-    return false;
-}
-
 function animate() {
     requestAnimationFrame(animate);
     if (controls && controls.enabled) controls.update(); // Nur wenn aktiviert
@@ -284,21 +272,32 @@ function animate() {
             playerMesh.rotation.y = cameraRotationY + Math.PI;
         }
 
-        // Schwerkraft: Zieht immer nach unten, aber im Wasser stoppt sie, und auf Insel nur wenn innerhalb
+        // Schwerkraft und Kollisionen mit Raycasting
         velocityY += gravity;
         playerMesh.position.y += velocityY;
 
-        if (playerMesh.position.y < 0) {
-            // Im Wasser: Schwerkraft aus, bleibt auf Wasseroberfläche (halb drin)
+        // Raycast für Kollisionen
+        const raycaster = new THREE.Raycaster();
+        raycaster.set(playerMesh.position.clone().setY(playerMesh.position.y + 1), new THREE.Vector3(0, -1, 0));
+
+        // Insel-Kollision
+        const islandIntersects = raycaster.intersectObject(islandMesh);
+        if (islandIntersects.length > 0 && islandIntersects[0].distance < 1) {
+            playerMesh.position.y = islandIntersects[0].point.y + 0.5;
+            velocityY = 0;
+        }
+
+        // Wasser-Kollision (nur wenn im Wasser und fallend)
+        const seaIntersects = raycaster.intersectObject(seaMesh);
+        if (seaIntersects.length > 0 && seaIntersects[0].distance < 1 && velocityY < 0 && playerMesh.position.y < 0) {
             playerMesh.position.y = 0;
             velocityY = 0;
-        } else if (playerMesh.position.y <= -50) {
-            // Auf Meeresgrund: Stoppen
+        }
+
+        // Boden-Kollision
+        const groundIntersects = raycaster.intersectObject(groundMesh);
+        if (groundIntersects.length > 0 && groundIntersects[0].distance < 1 && velocityY < 0) {
             playerMesh.position.y = -50;
-            velocityY = 0;
-        } else if (isOnIsland() && playerMesh.position.y <= originalPlayerY) {
-            // Auf Insel: Zurück auf Oberfläche
-            playerMesh.position.y = originalPlayerY;
             velocityY = 0;
         }
     }
