@@ -153,7 +153,7 @@ function exitFullscreen() {
 function handleFullscreenChange() {
     console.log("DEBUG: handleFullscreenChange() aufgerufen – Größe, Rotation und Player anpassen.");
     if (document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement) {
-        // Im Vollbild: Rotation stoppen, Player hinzufügen und Kamera hinter Player
+        // Im Vollbild: Rotation stoppen, Player hinzufügen, Kamera hinter Player, Controls deaktivieren
         isRotating = false;
         if (islandMesh && !playerMesh) {
             // Sichtbarer orangener Player (größer gemacht)
@@ -170,12 +170,13 @@ function handleFullscreenChange() {
             // Kamera hinter Player setzen
             updateCameraPosition();
         }
+        if (controls) controls.enabled = false; // Alle Controls deaktivieren
         renderer.setSize(window.innerWidth, window.innerHeight);
         camera.aspect = window.innerWidth / window.innerHeight;
         camera.updateProjectionMatrix();
         console.log(`DEBUG: Vollbild-Größe gesetzt: ${window.innerWidth}x${window.innerHeight}.`);
     } else {
-        // Vollbild beendet: Rotation starten, Player entfernen, Kamera zurück
+        // Vollbild beendet: Rotation starten, Player entfernen, Kamera zurück, Controls aktivieren
         isRotating = true;
         if (playerMesh) {
             scene.remove(playerMesh);
@@ -186,6 +187,7 @@ function handleFullscreenChange() {
         }
         if (controls) {
             controls.target.set(0, 0, 0); // Zurück zu Mitte
+            controls.enabled = true; // Controls wieder aktivieren
         }
         camera.position.set(250, 250, 250); // Zurück zur normalen Position
         camera.lookAt(0, 0, 0);
@@ -214,7 +216,7 @@ function jumpPlayer() {
 
 function animate() {
     requestAnimationFrame(animate);
-    if (controls) controls.update(); // Für Maus-Steuerung
+    if (controls) controls.update(); // Für Maus-Steuerung (aber nur wenn enabled)
     if (islandMesh && isRotating) islandMesh.rotation.y += 0.01; // Drehung nur wenn nicht im Vollbild
 
     // Player-Bewegung mit WASD
