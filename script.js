@@ -283,21 +283,21 @@ function animate() {
 
             // Insel-Kollision
             const islandIntersects = raycaster.intersectObject(islandMesh);
-            if (islandIntersects.length > 0 && islandIntersects[0].distance < 0.6) {
+            if (islandIntersects.length > 0) {
                 playerMesh.position.y = islandIntersects[0].point.y + 0.5;
                 velocityY = 0;
             }
 
             // Wasser-Kollision
             const seaIntersects = raycaster.intersectObject(seaMesh);
-            if (seaIntersects.length > 0 && seaIntersects[0].distance < 0.6 && playerMesh.position.y < 0) {
+            if (seaIntersects.length > 0) {
                 playerMesh.position.y = 0;
                 velocityY = 0;
             }
 
             // Boden-Kollision
             const groundIntersects = raycaster.intersectObject(groundMesh);
-            if (groundIntersects.length > 0 && groundIntersects[0].distance < 0.6) {
+            if (groundIntersects.length > 0) {
                 playerMesh.position.y = -50;
                 velocityY = 0;
             }
