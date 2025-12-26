@@ -203,6 +203,11 @@ function handleFullscreenChange() {
             scene.add(playerMesh);
             console.log("DEBUG: Sichtbarer orangener Player auf Insel-Oberfläche hinzugefügt bei y=" + originalPlayerY);
         }
+        if (playerMesh && controls) {
+            // Kamera hinter Player setzen und Position bestätigen
+            updateCameraPosition();
+            playerMesh.position.set(0, 25.5, 0); // Sicherstellen, dass er auf der Insel startet
+        }
         if (controls) controls.enabled = false; // OrbitControls deaktivieren im Vollbild
         renderer.setSize(window.innerWidth, window.innerHeight);
         camera.aspect = window.innerWidth / window.innerHeight;
