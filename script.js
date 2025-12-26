@@ -122,10 +122,10 @@ async function init() {
         groundMesh.position.y = -50;
         scene.add(groundMesh);
 
-        // Boden-Body
-        const groundRigidBodyDesc = RAPIER.RigidBodyDesc.fixed().setTranslation(0, -50.1, 0);
+        // Boden-Body (Halfspace für korrekte Plane)
+        const groundRigidBodyDesc = RAPIER.RigidBodyDesc.fixed().setTranslation(0, -50, 0);
         groundBody = world.createRigidBody(groundRigidBodyDesc);
-        const groundColliderDesc = RAPIER.ColliderDesc.cuboid(2500, 0.1, 2500);
+        const groundColliderDesc = RAPIER.ColliderDesc.halfspace(new RAPIER.Vector3(0, 1, 0));
         world.createCollider(groundColliderDesc, groundBody);
 
         // Insel generieren
@@ -255,10 +255,7 @@ function animate() {
         islandMesh.quaternion.set(rot.x, rot.y, rot.z, rot.w);
     }
     if (groundBody) {
-        const pos = groundBody.translation();
-        groundMesh.position.set(pos.x, pos.y, pos.z);
-        const rot = groundBody.rotation();
-        groundMesh.quaternion.set(rot.x, rot.y, rot.z, rot.w);
+        // Boden ist fixed, keine Sync nötig
     }
     if (playerBody && playerMesh) {
         const pos = playerBody.translation();
