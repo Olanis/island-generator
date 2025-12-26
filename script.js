@@ -272,33 +272,35 @@ function animate() {
             playerMesh.rotation.y = cameraRotationY + Math.PI;
         }
 
-        // Schwerkraft und Kollisionen mit Raycasting
+        // Schwerkraft
         velocityY += gravity;
         playerMesh.position.y += velocityY;
 
-        // Raycast für Kollisionen
-        const raycaster = new THREE.Raycaster();
-        raycaster.set(playerMesh.position.clone().setY(playerMesh.position.y + 1), new THREE.Vector3(0, -1, 0));
+        // Raycast für Kollisionen nur wenn fallend
+        if (velocityY < 0) {
+            const raycaster = new THREE.Raycaster();
+            raycaster.set(playerMesh.position.clone(), new THREE.Vector3(0, -1, 0));
 
-        // Insel-Kollision
-        const islandIntersects = raycaster.intersectObject(islandMesh);
-        if (islandIntersects.length > 0 && islandIntersects[0].distance < 1) {
-            playerMesh.position.y = islandIntersects[0].point.y + 0.5;
-            velocityY = 0;
-        }
+            // Insel-Kollision
+            const islandIntersects = raycaster.intersectObject(islandMesh);
+            if (islandIntersects.length > 0 && islandIntersects[0].distance < 0.6) {
+                playerMesh.position.y = islandIntersects[0].point.y + 0.5;
+                velocityY = 0;
+            }
 
-        // Wasser-Kollision (nur wenn im Wasser und fallend)
-        const seaIntersects = raycaster.intersectObject(seaMesh);
-        if (seaIntersects.length > 0 && seaIntersects[0].distance < 1 && velocityY < 0 && playerMesh.position.y < 0) {
-            playerMesh.position.y = 0;
-            velocityY = 0;
-        }
+            // Wasser-Kollision
+            const seaIntersects = raycaster.intersectObject(seaMesh);
+            if (seaIntersects.length > 0 && seaIntersects[0].distance < 0.6 && playerMesh.position.y < 0) {
+                playerMesh.position.y = 0;
+                velocityY = 0;
+            }
 
-        // Boden-Kollision
-        const groundIntersects = raycaster.intersectObject(groundMesh);
-        if (groundIntersects.length > 0 && groundIntersects[0].distance < 1 && velocityY < 0) {
-            playerMesh.position.y = -50;
-            velocityY = 0;
+            // Boden-Kollision
+            const groundIntersects = raycaster.intersectObject(groundMesh);
+            if (groundIntersects.length > 0 && groundIntersects[0].distance < 0.6) {
+                playerMesh.position.y = -50;
+                velocityY = 0;
+            }
         }
     }
 
