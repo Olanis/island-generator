@@ -247,6 +247,18 @@ function jumpPlayer() {
     }
 }
 
+function isOnIsland() {
+    if (!islandMesh || !playerMesh) return false;
+    const x = Math.abs(playerMesh.position.x);
+    const z = Math.abs(playerMesh.position.z);
+    if (islandMesh.geometry.parameters.width === 50) { // Quadrat
+        return x <= 25 && z <= 25;
+    } else if (islandMesh.geometry.parameters.width === 100) { // Rechteck
+        return x <= 50 && z <= 25;
+    }
+    return false;
+}
+
 function animate() {
     requestAnimationFrame(animate);
     if (controls && controls.enabled) controls.update(); // Nur wenn aktiviert
@@ -272,7 +284,7 @@ function animate() {
             playerMesh.rotation.y = cameraRotationY + Math.PI;
         }
 
-        // Schwerkraft: Zieht immer nach unten, aber im Wasser stoppt sie
+        // Schwerkraft: Zieht immer nach unten, aber im Wasser stoppt sie, und auf Insel nur wenn innerhalb
         velocityY += gravity;
         playerMesh.position.y += velocityY;
 
@@ -284,7 +296,7 @@ function animate() {
             // Auf Meeresgrund: Stoppen
             playerMesh.position.y = -50;
             velocityY = 0;
-        } else if (playerMesh.position.y <= originalPlayerY) {
+        } else if (isOnIsland() && playerMesh.position.y <= originalPlayerY) {
             // Auf Insel: Zurück auf Oberfläche
             playerMesh.position.y = originalPlayerY;
             velocityY = 0;
