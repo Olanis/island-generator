@@ -4,6 +4,7 @@
 let scene, camera, renderer, islandMesh, seaMesh, controls, isRotating = true, playerMesh, originalPlayerY, velocityY = 0, gravity = -0.005, jumpStrength = 0.1;
 let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
 const moveSpeed = 0.5; // Geschwindigkeit der Bewegung
+let isFullscreen = false, rightMouseDown = false, lastMouseX = 0, cameraRotationY = 0;
 
 function init() {
     console.log("DEBUG: init() aufgerufen – Three.js Setup starten.");
@@ -27,10 +28,13 @@ function init() {
         controls = new THREE.OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
         controls.dampingFactor = 0.05;
-        controls.enablePan = false; // Panning deaktivieren
-        controls.enableZoom = false; // Zoom deaktivieren
-        controls.enableRotate = true; // Rotate aktivieren
-        console.log("DEBUG: OrbitControls hinzugefügt – Nur Rotate mit Rechtsklick.");
+        // Maus-Buttons tauschen: Linke für Pannen/Zoomen, Rechte für Rotieren (aber nur außerhalb Vollbild)
+        controls.mouseButtons = {
+            LEFT: THREE.MOUSE.PAN,
+            RIGHT: THREE.MOUSE.ROTATE
+        };
+        controls.enabled = true; // Aktiviert außerhalb Vollbild
+        console.log("DEBUG: OrbitControls hinzugefügt – Maus zum Drehen/Zoomen verwenden (getauscht).");
     };
     document.head.appendChild(script);
 
@@ -65,6 +69,27 @@ function init() {
         else if (key === 's') moveBackward = false;
         else if (key === 'a') moveLeft = false;
         else if (key === 'd') moveRight = false;
+    });
+
+    // Maus-Events für manuelle Rotation im Vollbild
+    document.addEventListener('mousedown', function(event) {
+        if (event.button === 2 && isFullscreen) { // Rechtsklick im Vollbild
+            rightMouseDown = true;
+            lastMouseX = event.clientX;
+        }
+    });
+    document.addEventListener('mouseup', function(event) {
+        if (event.button === 2) rightMouseDown = false;
+    });
+    document.addEventListener('mousemove', function(event) {
+        if (rightMouseDown && isFullscreen) {
+            const deltaX = event.clientX - lastMouseX;
+            cameraRotationY -= deltaX * 0.01; // Rotation-Geschwindigkeit
+            lastMouseX = event.clientX;
+        }
+    });
+    document.addEventListener('contextmenu', function(event) {
+        event.preventDefault(); // Rechtsklick-Menü verhindern
     });
 
     // Vollbild-Änderungen überwachen
@@ -151,7 +176,8 @@ function exitFullscreen() {
 function handleFullscreenChange() {
     console.log("DEBUG: handleFullscreenChange() aufgerufen – Größe, Rotation und Player anpassen.");
     if (document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement) {
-        // Im Vollbild: Rotation stoppen, Player hinzufügen, Kamera hinter Player, Controls aktivieren
+        isFullscreen = true;
+        // Im Vollbild: Rotation stoppen, Player hinzufügen, Kamera hinter Player, Controls deaktivieren
         isRotating = false;
         if (islandMesh && !playerMesh) {
             // Sichtbarer orangener Player (größer gemacht)
@@ -164,20 +190,14 @@ function handleFullscreenChange() {
             scene.add(playerMesh);
             console.log("DEBUG: Sichtbarer orangener Player auf Insel-Oberfläche hinzugefügt bei y=" + originalPlayerY);
         }
-        if (playerMesh && controls) {
-            // Kamera hinter Player setzen
-            updateCameraPosition();
-        }
-        if (controls) {
-            controls.enabled = true; // Controls aktivieren für Vollbild
-            controls.target.copy(playerMesh.position); // Target auf Player setzen
-        }
+        if (controls) controls.enabled = false; // OrbitControls deaktivieren im Vollbild
         renderer.setSize(window.innerWidth, window.innerHeight);
         camera.aspect = window.innerWidth / window.innerHeight;
         camera.updateProjectionMatrix();
         console.log(`DEBUG: Vollbild-Größe gesetzt: ${window.innerWidth}x${window.innerHeight}.`);
     } else {
-        // Vollbild beendet: Rotation starten, Player entfernen, Kamera zurück, Controls deaktivieren
+        isFullscreen = false;
+        // Vollbild beendet: Rotation starten, Player entfernen, Kamera zurück, Controls aktivieren
         isRotating = true;
         if (playerMesh) {
             scene.remove(playerMesh);
@@ -186,10 +206,7 @@ function handleFullscreenChange() {
             playerMesh = null;
             console.log("DEBUG: Sichtbarer orangener Player entfernt.");
         }
-        if (controls) {
-            controls.target.set(0, 0, 0); // Zurück zu Mitte
-            controls.enabled = false; // Controls deaktivieren
-        }
+        if (controls) controls.enabled = true; // OrbitControls wieder aktivieren
         camera.position.set(250, 250, 250); // Zurück zur normalen Position
         camera.lookAt(0, 0, 0);
         renderer.setSize(800, 600);
@@ -200,18 +217,18 @@ function handleFullscreenChange() {
 }
 
 function updateCameraPosition() {
-    if (playerMesh && controls) {
+    if (playerMesh) {
         // Kamera hinter Player positionieren (schräg oben)
         const offset = new THREE.Vector3(0, 20, 30); // Höhe 20, Distanz 30 hinter
-        // Offset basierend auf Kamerarotation drehen
-        offset.applyQuaternion(camera.quaternion);
+        // Offset drehen basierend auf cameraRotationY
+        offset.applyAxisAngle(new THREE.Vector3(0, 1, 0), cameraRotationY);
         camera.position.copy(playerMesh.position).add(offset);
-        controls.target.copy(playerMesh.position);
+        camera.lookAt(playerMesh.position);
     }
 }
 
 function jumpPlayer() {
-    if (playerMesh && (document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement) && playerMesh.position.y <= originalPlayerY + 0.01) {
+    if (playerMesh && isFullscreen && playerMesh.position.y <= originalPlayerY + 0.01) {
         console.log("DEBUG: jumpPlayer() aufgerufen – Player springt mit Schwerkraft.");
         velocityY = jumpStrength; // Aufwärtsgeschwindigkeit setzen
     }
@@ -219,7 +236,7 @@ function jumpPlayer() {
 
 function animate() {
     requestAnimationFrame(animate);
-    if (controls) controls.update(); // Für Maus-Steuerung (aktiviert im Vollbild)
+    if (controls && controls.enabled) controls.update(); // Nur wenn aktiviert
     if (islandMesh && isRotating) islandMesh.rotation.y += 0.01; // Drehung nur wenn nicht im Vollbild
 
     // Player-Bewegung mit WASD
@@ -229,13 +246,11 @@ function animate() {
         if (moveLeft) playerMesh.position.x -= moveSpeed; // A: Links
         if (moveRight) playerMesh.position.x += moveSpeed; // D: Rechts
 
-        // Kamera-Position aktualisieren im Vollbild
-        if (document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement) {
+        // Kamera-Position und Player-Drehung aktualisieren im Vollbild
+        if (isFullscreen) {
             updateCameraPosition();
             // Player dreht sich, um der Kamera den Rücken zuzukehren
-            if (controls) {
-                playerMesh.rotation.y = controls.getAzimuthalAngle() + Math.PI;
-            }
+            playerMesh.rotation.y = cameraRotationY + Math.PI;
         }
 
         // Schwerkraft für Springen
