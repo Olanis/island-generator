@@ -5,7 +5,6 @@ let scene, camera, renderer, islandMesh, seaMesh, groundMesh, controls, isRotati
 let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
 const moveSpeed = 0.5; // Geschwindigkeit der Bewegung
 let isFullscreen = false, rightMouseDown = false, lastMouseX = 0, cameraRotationY = 0;
-let islandBox; // Box für Insel-Kollision
 
 function init() {
     console.log("DEBUG: init() aufgerufen – Three.js Setup starten.");
@@ -155,10 +154,6 @@ function generateIsland() {
     islandMesh.position.y = 0; // Mitte auf Wasseroberfläche – untere Hälfte unter Wasser
     scene.add(islandMesh);
 
-    // Box für Kollision erstellen
-    islandBox = new THREE.Box3().setFromObject(islandMesh);
-    console.log("DEBUG: Insel-Box für Kollision erstellt.");
-
     console.log("DEBUG: Große Insel-Mesh zur Szene hinzugefügt (halb im Wasser).");
 
     // Rendern
@@ -260,6 +255,19 @@ function jumpPlayer() {
     }
 }
 
+function clampToIsland() {
+    if (!islandMesh || !playerMesh) return;
+    const x = playerMesh.position.x;
+    const z = playerMesh.position.z;
+    if (islandMesh.geometry.parameters.width === 50) { // Quadrat
+        playerMesh.position.x = Math.max(-25, Math.min(25, x));
+        playerMesh.position.z = Math.max(-25, Math.min(25, z));
+    } else if (islandMesh.geometry.parameters.width === 100) { // Rechteck
+        playerMesh.position.x = Math.max(-50, Math.min(50, x));
+        playerMesh.position.z = Math.max(-25, Math.min(25, z));
+    }
+}
+
 function animate() {
     requestAnimationFrame(animate);
     if (controls && controls.enabled) controls.update(); // Nur wenn aktiviert
@@ -275,15 +283,11 @@ function animate() {
 
         // Richtung drehen basierend auf Player-Rotation
         direction.applyAxisAngle(new THREE.Vector3(0, 1, 0), playerMesh.rotation.y);
+        // Position aktualisieren
+        playerMesh.position.add(direction.multiplyScalar(moveSpeed));
 
-        // Horizontale Kollision mit Box
-        const testDirection = direction.clone().multiplyScalar(moveSpeed);
-        const originalPosition = playerMesh.position.clone();
-        playerMesh.position.add(testDirection);
-        const playerBox = new THREE.Box3().setFromObject(playerMesh);
-        if (islandBox && playerBox.intersectsBox(islandBox)) {
-            playerMesh.position.copy(originalPosition); // Zurück, wenn Kollision
-        }
+        // Position an Insel-Boundaries klammern (einfache Kollision)
+        clampToIsland();
 
         // Kamera-Position und Player-Drehung aktualisieren im Vollbild
         if (isFullscreen) {
