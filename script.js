@@ -1,27 +1,34 @@
 // Einfacher Insel-Generator mit Three.js (WebGL) – Insel schwimmt halb im Wasser
-// Nvidia PhysX.js für Physik integriert
+// Rapier für Physik integriert
 
 let scene, camera, renderer, islandMesh, seaMesh, groundMesh, controls, isRotating = true, playerMesh, originalPlayerY;
 let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
 const moveSpeed = 0.5;
 let isFullscreen = false, rightMouseDown = false, lastMouseX = 0, cameraRotationY = 0;
 
-// PhysX
-let PhysX, physics, physxScene, islandBody, playerBody, groundBody;
+// Rapier
+let RAPIER, world, islandBody, playerBody, groundBody;
 
 async function init() {
-    console.log("DEBUG: init() aufgerufen – Three.js + PhysX Setup starten.");
+    console.log("DEBUG: init() aufgerufen – Three.js + Rapier Setup starten.");
 
-    try {
-        // PhysX.js laden (mit WASM)
-        const PhysXModule = await import('https://cdn.jsdelivr.net/npm/@playcanvas/physx@0.6.0/dist/PhysX.js');
-        PhysX = PhysXModule.default || PhysXModule;
+    // Rapier laden als ES-Module
+    const script = document.createElement('script');
+    script.type = 'module';
+    script.textContent = `
+        import * as RAPIER from 'https://cdn.jsdelivr.net/npm/@dimforge/rapier3d-compat@0.12.0/rapier.es.js';
+        await RAPIER.init();
+        window.RAPIER = RAPIER;
+        window.initThreeJS();
+    `;
+    document.head.appendChild(script);
 
-        await PhysX.loadPhysics();
-        physics = PhysX.Physics();
-        physxScene = physics.createScene();
+    // Warte auf Rapier, dann Three.js starten
+    window.initThreeJS = async function() {
+        RAPIER = window.RAPIER;
 
-        console.log("DEBUG: PhysX geladen und initialisiert.");
+        // Physik-Welt
+        world = new RAPIER.World({ x: 0, y: -9.82, z: 0 });
 
         // Szene, Kamera, Renderer
         scene = new THREE.Scene();
@@ -116,13 +123,10 @@ async function init() {
         scene.add(groundMesh);
 
         // Boden-Body
-        const groundShape = new PhysX.BoxGeometry(2500, 0.1, 2500);
-        groundBody = physics.createRigidStatic({
-            type: 'static',
-            shapes: [{ type: 'box', extents: { x: 2500, y: 0.1, z: 2500 } }],
-            position: { x: 0, y: -50.1, z: 0 }
-        });
-        physxScene.addBody(groundBody);
+        const groundRigidBodyDesc = RAPIER.RigidBodyDesc.fixed().setTranslation(0, -50.1, 0);
+        groundBody = world.createRigidBody(groundRigidBodyDesc);
+        const groundColliderDesc = RAPIER.ColliderDesc.cuboid(2500, 0.1, 2500);
+        world.createCollider(groundColliderDesc, groundBody);
 
         // Insel generieren
         generateIsland();
@@ -130,9 +134,7 @@ async function init() {
         // Animate starten
         animate();
         console.log("DEBUG: Setup fertig.");
-    } catch (error) {
-        console.error("PhysX Fehler:", error);
-    }
+    };
 }
 
 function generateIsland() {
@@ -142,17 +144,17 @@ function generateIsland() {
         scene.remove(islandMesh);
         islandMesh.geometry.dispose();
         islandMesh.material.dispose();
-        physxScene.removeBody(islandBody);
+        world.removeRigidBody(islandBody);
     }
 
     const shape = Math.random() > 0.5 ? 'quadrat' : 'rechteck';
-    let geometry, extents;
+    let geometry, hx, hy, hz;
     if (shape === 'quadrat') {
         geometry = new THREE.BoxGeometry(50, 50, 50);
-        extents = { x: 25, y: 25, z: 25 };
+        hx = 25; hy = 25; hz = 25;
     } else {
         geometry = new THREE.BoxGeometry(100, 50, 50);
-        extents = { x: 50, y: 25, z: 25 };
+        hx = 50; hy = 25; hz = 25;
     }
 
     const material = new THREE.MeshLambertMaterial({ color: 0x228b22 });
@@ -161,12 +163,10 @@ function generateIsland() {
     scene.add(islandMesh);
 
     // Insel-Body
-    islandBody = physics.createRigidStatic({
-        type: 'static',
-        shapes: [{ type: 'box', extents }],
-        position: { x: 0, y: 0, z: 0 }
-    });
-    physxScene.addBody(islandBody);
+    const islandRigidBodyDesc = RAPIER.RigidBodyDesc.fixed().setTranslation(0, 0, 0);
+    islandBody = world.createRigidBody(islandRigidBodyDesc);
+    const islandColliderDesc = RAPIER.ColliderDesc.cuboid(hx, hy, hz);
+    world.createCollider(islandColliderDesc, islandBody);
 
     renderer.render(scene, camera);
 }
@@ -194,13 +194,10 @@ function handleFullscreenChange() {
             scene.add(playerMesh);
 
             // Player-Body
-            playerBody = physics.createRigidDynamic({
-                type: 'dynamic',
-                shapes: [{ type: 'box', extents: { x: 0.5, y: 0.5, z: 0.25 } }],
-                position: { x: 0, y: 26, z: 0 },
-                mass: 1
-            });
-            physxScene.addBody(playerBody);
+            const playerRigidBodyDesc = RAPIER.RigidBodyDesc.dynamic().setTranslation(0, 26, 0);
+            playerBody = world.createRigidBody(playerRigidBodyDesc);
+            const playerColliderDesc = RAPIER.ColliderDesc.cuboid(0.5, 0.5, 0.25);
+            world.createCollider(playerColliderDesc, playerBody);
         }
         if (controls) controls.enabled = false;
         renderer.setSize(window.innerWidth, window.innerHeight);
@@ -214,7 +211,7 @@ function handleFullscreenChange() {
             playerMesh.geometry.dispose();
             playerMesh.material.dispose();
             playerMesh = null;
-            physxScene.removeBody(playerBody);
+            world.removeRigidBody(playerBody);
             playerBody = null;
         }
         if (controls) controls.enabled = true;
@@ -238,7 +235,7 @@ function updateCameraPosition() {
 
 function jumpPlayer() {
     if (playerBody) {
-        playerBody.addForce({ x: 0, y: 2, z: 0 });
+        playerBody.addForce({ x: 0, y: 2, z: 0 }, true);
     }
 }
 
@@ -248,29 +245,32 @@ function animate() {
     if (islandMesh && isRotating) islandMesh.rotation.y += 0.01;
 
     // Physik Schritt
-    physxScene.simulate(1 / 60);
-    physxScene.update();
+    world.step();
 
     // Sync Meshes
     if (islandBody) {
-        islandMesh.position.copy(islandBody.position);
-        islandMesh.quaternion.copy(islandBody.quaternion);
+        const pos = islandBody.translation();
+        islandMesh.position.set(pos.x, pos.y, pos.z);
+        const rot = islandBody.rotation();
+        islandMesh.quaternion.set(rot.x, rot.y, rot.z, rot.w);
     }
     if (groundBody) {
-        groundMesh.position.copy(groundBody.position);
-        groundMesh.quaternion.copy(groundBody.quaternion);
+        const pos = groundBody.translation();
+        groundMesh.position.set(pos.x, pos.y, pos.z);
+        const rot = groundBody.rotation();
+        groundMesh.quaternion.set(rot.x, rot.y, rot.z, rot.w);
     }
     if (playerBody && playerMesh) {
-        playerMesh.position.copy(playerBody.position);
-        playerMesh.quaternion.copy(playerBody.quaternion);
+        const pos = playerBody.translation();
+        playerMesh.position.set(pos.x, pos.y, pos.z);
+        const rot = playerBody.rotation();
+        playerMesh.quaternion.set(rot.x, rot.y, rot.z, rot.w);
 
         // Bewegung
-        let velocity = playerBody.velocity;
-        if (moveForward) velocity.z = moveSpeed;
-        if (moveBackward) velocity.z = -moveSpeed;
-        if (moveLeft) velocity.x = moveSpeed;
-        if (moveRight) velocity.x = -moveSpeed;
-        playerBody.velocity = velocity;
+        if (moveForward) playerBody.setLinvel({ x: playerBody.linvel().x, y: playerBody.linvel().y, z: moveSpeed });
+        if (moveBackward) playerBody.setLinvel({ x: playerBody.linvel().x, y: playerBody.linvel().y, z: -moveSpeed });
+        if (moveLeft) playerBody.setLinvel({ x: moveSpeed, y: playerBody.linvel().y, z: playerBody.linvel().z });
+        if (moveRight) playerBody.setLinvel({ x: -moveSpeed, y: playerBody.linvel().y, z: playerBody.linvel().z });
 
         // Kamera-Update
         if (isFullscreen) {
@@ -280,8 +280,8 @@ function animate() {
 
         // Wasser: Auf Oberfläche
         if (playerMesh.position.y < 0) {
-            playerBody.position = { x: playerBody.position.x, y: 0, z: playerBody.position.z };
-            playerBody.velocity = { x: 0, y: 0, z: 0 };
+            playerBody.setTranslation({ x: pos.x, y: 0, z: pos.z });
+            playerBody.setLinvel({ x: 0, y: 0, z: 0 });
         }
     }
 
