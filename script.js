@@ -239,12 +239,18 @@ function animate() {
     if (controls && controls.enabled) controls.update(); // Nur wenn aktiviert
     if (islandMesh && isRotating) islandMesh.rotation.y += 0.01; // Drehung nur wenn nicht im Vollbild
 
-    // Player-Bewegung mit WASD
+    // Player-Bewegung mit WASD (relativ zur Player-Rotation)
     if (playerMesh) {
-        if (moveForward) playerMesh.position.z -= moveSpeed; // W: Vorwärts
-        if (moveBackward) playerMesh.position.z += moveSpeed; // S: Rückwärts
-        if (moveLeft) playerMesh.position.x -= moveSpeed; // A: Links
-        if (moveRight) playerMesh.position.x += moveSpeed; // D: Rechts
+        let direction = new THREE.Vector3();
+        if (moveForward) direction.add(new THREE.Vector3(0, 0, -1)); // W: Vorwärts
+        if (moveBackward) direction.add(new THREE.Vector3(0, 0, 1)); // S: Rückwärts
+        if (moveLeft) direction.add(new THREE.Vector3(-1, 0, 0)); // A: Links
+        if (moveRight) direction.add(new THREE.Vector3(1, 0, 0)); // D: Rechts
+
+        // Richtung drehen basierend auf Player-Rotation
+        direction.applyAxisAngle(new THREE.Vector3(0, 1, 0), playerMesh.rotation.y);
+        // Position aktualisieren
+        playerMesh.position.add(direction.multiplyScalar(moveSpeed));
 
         // Kamera-Position und Player-Drehung aktualisieren im Vollbild
         if (isFullscreen) {
