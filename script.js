@@ -237,9 +237,13 @@ function updateCameraPosition() {
 }
 
 function jumpPlayer() {
-    if (playerBody && Math.abs(playerBody.linvel().y) < 0.1) { // Nur springen, wenn auf Boden (Velocity.y nahe 0)
-        const vel = playerBody.linvel();
-        playerBody.setLinvel({ x: vel.x, y: 10, z: vel.z }); // Doppelt so hoch
+    if (playerBody) {
+        if (Math.abs(playerBody.linvel().y) < 0.1) { // Springen auf Boden
+            const vel = playerBody.linvel();
+            playerBody.setLinvel({ x: vel.x, y: 10, z: vel.z });
+        } else if (playerMesh.position.y < 0) { // Schwimmen im Wasser
+            playerBody.addForce({ x: 0, y: 5, z: 0 }, true);
+        }
     }
 }
 
@@ -267,15 +271,20 @@ function animate() {
         const rot = playerBody.rotation();
         playerMesh.quaternion.set(rot.x, rot.y, rot.z, rot.w);
 
+        // Wasser-Physik: Schwächere Gravity und langsamere Bewegung im Wasser
+        const isInWater = playerMesh.position.y < 0;
+        world.gravity.set(0, isInWater ? -5 : -20, 0);
+        const currentMoveSpeed = isInWater ? moveSpeed * 0.5 : moveSpeed;
+
         // Bewegung (gedreht nach Player-Rotation: cameraRotationY + Math.PI)
         let direction = new THREE.Vector3();
-        if (moveForward) direction.z += moveSpeed;
-        if (moveBackward) direction.z -= moveSpeed;
-        if (moveLeft) direction.x += moveSpeed;
-        if (moveRight) direction.x -= moveSpeed;
+        if (moveForward) direction.z += currentMoveSpeed;
+        if (moveBackward) direction.z -= currentMoveSpeed;
+        if (moveLeft) direction.x += currentMoveSpeed;
+        if (moveRight) direction.x -= currentMoveSpeed;
 
         if (direction.length() > 0) {
-            direction.applyAxisAngle(new THREE.Vector3(0, 1, 0), cameraRotationY + Math.PI); // Korrigiert
+            direction.applyAxisAngle(new THREE.Vector3(0, 1, 0), cameraRotationY + Math.PI);
             playerBody.setLinvel({ x: direction.x, y: playerBody.linvel().y, z: direction.z });
         }
 
