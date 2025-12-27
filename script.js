@@ -5,6 +5,7 @@ let scene, camera, renderer, islandMesh, seaMesh, groundMesh, controls, isRotati
 let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
 const moveSpeed = 6; // Doppelt so schnell
 let isFullscreen = false, rightMouseDown = false, lastMouseX = 0, cameraRotationY = 0;
+let jumpCount = 0; // Doppelsprung: max 2
 
 // Rapier
 let RAPIER, world, islandBody, playerBody, groundBody;
@@ -201,6 +202,7 @@ function handleFullscreenChange() {
             playerBody.setLinearDamping(0.5);
             const playerColliderDesc = RAPIER.ColliderDesc.cuboid(0.5, 0.5, 0.25);
             world.createCollider(playerColliderDesc, playerBody);
+            jumpCount = 0; // Reset
         }
         if (controls) controls.enabled = false;
         renderer.setSize(window.innerWidth, window.innerHeight);
@@ -216,6 +218,7 @@ function handleFullscreenChange() {
             playerMesh = null;
             world.removeRigidBody(playerBody);
             playerBody = null;
+            jumpCount = 0;
         }
         if (controls) controls.enabled = true;
         camera.position.set(250, 250, 250);
@@ -237,13 +240,10 @@ function updateCameraPosition() {
 }
 
 function jumpPlayer() {
-    if (playerBody) {
-        if (Math.abs(playerBody.linvel().y) < 0.1) { // Springen auf Boden
-            const vel = playerBody.linvel();
-            playerBody.setLinvel({ x: vel.x, y: 10, z: vel.z });
-        } else if (playerMesh.position.y < 0) { // Schwimmen im Wasser
-            playerBody.addForce({ x: 0, y: 5, z: 0 }, true);
-        }
+    if (playerBody && jumpCount < 2) {
+        jumpCount++;
+        const vel = playerBody.linvel();
+        playerBody.setLinvel({ x: vel.x, y: 10, z: vel.z });
     }
 }
 
@@ -274,7 +274,7 @@ function animate() {
         // Wasser-Physik: Schwächere Gravity und langsamere Bewegung im Wasser
         const isInWater = playerMesh.position.y < 0;
         world.gravity = new RAPIER.Vector3(0, isInWater ? -5 : -20, 0);
-        const currentMoveSpeed = isInWater ? moveSpeed * 0.5 : moveSpeed;
+        const currentMoveSpeed = isInWater ? moveSpeed * 0.8 : moveSpeed; // Leicht langsamer im Wasser
 
         // Bewegung (gedreht nach Player-Rotation: cameraRotationY + Math.PI)
         let direction = new THREE.Vector3();
@@ -286,6 +286,17 @@ function animate() {
         if (direction.length() > 0) {
             direction.applyAxisAngle(new THREE.Vector3(0, 1, 0), cameraRotationY + Math.PI);
             playerBody.setLinvel({ x: direction.x, y: playerBody.linvel().y, z: direction.z });
+        }
+
+        // Jump-Count reset, wenn auf Boden
+        if (playerMesh.position.y >= 25) {
+            jumpCount = 0;
+        }
+
+        // Wasser-Eintritt: Fallgeschwindigkeit abschwächen
+        if (isInWater && playerBody.linvel().y < 0) {
+            const vel = playerBody.linvel();
+            playerBody.setLinvel({ x: vel.x, y: vel.y * 0.7, z: vel.z }); // Deutlich abschwächen
         }
 
         // Kamera-Update
