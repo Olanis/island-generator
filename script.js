@@ -273,7 +273,7 @@ function animate() {
 
         // Wasser-Physik: Schwächere Gravity und langsamere Bewegung im Wasser
         const isInWater = playerMesh.position.y < 0;
-        world.gravity.set(0, isInWater ? -5 : -20, 0);
+        world.gravity = new RAPIER.Vector3(0, isInWater ? -5 : -20, 0);
         const currentMoveSpeed = isInWater ? moveSpeed * 0.5 : moveSpeed;
 
         // Bewegung (gedreht nach Player-Rotation: cameraRotationY + Math.PI)
