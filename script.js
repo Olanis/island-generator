@@ -3,7 +3,7 @@
 
 let scene, camera, renderer, islandMesh, seaMesh, groundMesh, controls, isRotating = true, playerMesh, originalPlayerY;
 let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
-const moveSpeed = 0.5;
+const moveSpeed = 3; // Erhöht für sichtbare Bewegung
 let isFullscreen = false, rightMouseDown = false, lastMouseX = 0, cameraRotationY = 0;
 
 // Rapier
@@ -237,8 +237,9 @@ function updateCameraPosition() {
 }
 
 function jumpPlayer() {
-    if (playerBody) {
-        playerBody.addForce({ x: 0, y: 2, z: 0 }, true);
+    if (playerBody && playerMesh.position.y >= 25) { // Nur springen, wenn auf Boden
+        const vel = playerBody.linvel();
+        playerBody.setLinvel({ x: vel.x, y: 5, z: vel.z }); // Überschreibt y-Velocity für stabilen Jump
     }
 }
 
