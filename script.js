@@ -2,7 +2,7 @@
 // Rapier für Physik integriert
 
 let scene, camera, renderer, islandMesh, seaMesh, groundMesh, controls, isRotating = true, playerMesh, originalPlayerY;
-let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
+let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false, jumpPressed = false;
 const moveSpeed = 6; // Doppelt so schnell
 let isFullscreen = false, rightMouseDown = false, lastMouseX = 0, cameraRotationY = 0;
 let jumpCount = 0; // Doppelsprung: max 2
@@ -72,7 +72,10 @@ async function init() {
             else if (key === 's') moveBackward = true;
             else if (key === 'a') moveLeft = true;
             else if (key === 'd') moveRight = true;
-            else if (key === ' ') jumpPlayer();
+            else if (key === ' ') {
+                jumpPressed = true;
+                jumpPlayer();
+            }
             else if (key === 'escape') exitFullscreen();
         });
 
@@ -82,6 +85,7 @@ async function init() {
             else if (key === 's') moveBackward = false;
             else if (key === 'a') moveLeft = false;
             else if (key === 'd') moveRight = false;
+            else if (key === ' ') jumpPressed = false;
         });
 
         // Maus-Events
@@ -240,7 +244,8 @@ function updateCameraPosition() {
 }
 
 function jumpPlayer() {
-    if (playerBody && jumpCount < 2) {
+    const isInWater = playerMesh.position.y < 0;
+    if (playerBody && !isInWater && jumpCount < 2) { // Nur Jump an Land/Oberfläche
         jumpCount++;
         const vel = playerBody.linvel();
         playerBody.setLinvel({ x: vel.x, y: 10, z: vel.z });
@@ -286,6 +291,11 @@ function animate() {
         if (direction.length() > 0) {
             direction.applyAxisAngle(new THREE.Vector3(0, 1, 0), cameraRotationY + Math.PI);
             playerBody.setLinvel({ x: direction.x, y: playerBody.linvel().y, z: direction.z });
+        }
+
+        // Kontinuierliches Schwimmen im Wasser
+        if (jumpPressed && isInWater) {
+            playerBody.addForce({ x: 0, y: 3, z: 0 }, true); // Langsam nach oben schwimmen
         }
 
         // Jump-Count reset, wenn auf Boden
