@@ -267,7 +267,7 @@ function animate() {
         const rot = playerBody.rotation();
         playerMesh.quaternion.set(rot.x, rot.y, rot.z, rot.w);
 
-        // Bewegung (gedreht nach Blickrichtung)
+        // Bewegung (gedreht nach Player-Rotation: cameraRotationY + Math.PI)
         let direction = new THREE.Vector3();
         if (moveForward) direction.z += moveSpeed;
         if (moveBackward) direction.z -= moveSpeed;
@@ -275,7 +275,7 @@ function animate() {
         if (moveRight) direction.x -= moveSpeed;
 
         if (direction.length() > 0) {
-            direction.applyAxisAngle(new THREE.Vector3(0, 1, 0), cameraRotationY); // Nach Camera drehen
+            direction.applyAxisAngle(new THREE.Vector3(0, 1, 0), cameraRotationY + Math.PI); // Korrigiert
             playerBody.setLinvel({ x: direction.x, y: playerBody.linvel().y, z: direction.z });
         }
 
