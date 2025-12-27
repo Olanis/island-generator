@@ -27,8 +27,8 @@ async function init() {
     window.initThreeJS = async function() {
         RAPIER = window.RAPIER;
 
-        // Physik-Welt
-        world = new RAPIER.World({ x: 0, y: -9.82, z: 0 });
+        // Physik-Welt (stärkere Gravity für schnelleres Fallen)
+        world = new RAPIER.World({ x: 0, y: -20, z: 0 });
 
         // Szene, Kamera, Renderer
         scene = new THREE.Scene();
@@ -267,22 +267,22 @@ function animate() {
         const rot = playerBody.rotation();
         playerMesh.quaternion.set(rot.x, rot.y, rot.z, rot.w);
 
-        // Bewegung
-        if (moveForward) playerBody.setLinvel({ x: playerBody.linvel().x, y: playerBody.linvel().y, z: moveSpeed });
-        if (moveBackward) playerBody.setLinvel({ x: playerBody.linvel().x, y: playerBody.linvel().y, z: -moveSpeed });
-        if (moveLeft) playerBody.setLinvel({ x: moveSpeed, y: playerBody.linvel().y, z: playerBody.linvel().z });
-        if (moveRight) playerBody.setLinvel({ x: -moveSpeed, y: playerBody.linvel().y, z: playerBody.linvel().z });
+        // Bewegung (gedreht nach Blickrichtung)
+        let direction = new THREE.Vector3();
+        if (moveForward) direction.z += moveSpeed;
+        if (moveBackward) direction.z -= moveSpeed;
+        if (moveLeft) direction.x += moveSpeed;
+        if (moveRight) direction.x -= moveSpeed;
+
+        if (direction.length() > 0) {
+            direction.applyAxisAngle(new THREE.Vector3(0, 1, 0), cameraRotationY); // Nach Camera drehen
+            playerBody.setLinvel({ x: direction.x, y: playerBody.linvel().y, z: direction.z });
+        }
 
         // Kamera-Update
         if (isFullscreen) {
             updateCameraPosition();
             playerMesh.rotation.y = cameraRotationY + Math.PI;
-        }
-
-        // Wasser: Auf Oberfläche
-        if (playerMesh.position.y < 0) {
-            playerBody.setTranslation({ x: pos.x, y: 0, z: pos.z });
-            playerBody.setLinvel({ x: 0, y: 0, z: 0 });
         }
     }
 
