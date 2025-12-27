@@ -3,8 +3,9 @@
 
 let scene, camera, renderer, islandMesh, seaMesh, groundMesh, controls, isRotating = true, playerMesh, originalPlayerY;
 let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
-const moveSpeed = 3; // Erhöht für sichtbare Bewegung
+const moveSpeed = 6; // Doppelt so schnell
 let isFullscreen = false, rightMouseDown = false, lastMouseX = 0, cameraRotationY = 0;
+let jumpCount = 0; // Jump-Counter für max 2 Sprünge
 
 // Rapier
 let RAPIER, world, islandBody, playerBody, groundBody;
@@ -201,6 +202,7 @@ function handleFullscreenChange() {
             playerBody.setLinearDamping(0.5);
             const playerColliderDesc = RAPIER.ColliderDesc.cuboid(0.5, 0.5, 0.25);
             world.createCollider(playerColliderDesc, playerBody);
+            jumpCount = 0; // Reset Jump-Count
         }
         if (controls) controls.enabled = false;
         renderer.setSize(window.innerWidth, window.innerHeight);
@@ -216,6 +218,7 @@ function handleFullscreenChange() {
             playerMesh = null;
             world.removeRigidBody(playerBody);
             playerBody = null;
+            jumpCount = 0;
         }
         if (controls) controls.enabled = true;
         camera.position.set(250, 250, 250);
@@ -237,9 +240,10 @@ function updateCameraPosition() {
 }
 
 function jumpPlayer() {
-    if (playerBody && playerMesh.position.y >= 25) { // Nur springen, wenn auf Boden
+    if (playerBody && jumpCount < 2) { // Max 2 Sprünge
         const vel = playerBody.linvel();
-        playerBody.setLinvel({ x: vel.x, y: 5, z: vel.z }); // Überschreibt y-Velocity für stabilen Jump
+        playerBody.setLinvel({ x: vel.x, y: 10, z: vel.z }); // Doppelt so hoch
+        jumpCount++;
     }
 }
 
@@ -277,6 +281,11 @@ function animate() {
         if (direction.length() > 0) {
             direction.applyAxisAngle(new THREE.Vector3(0, 1, 0), cameraRotationY + Math.PI); // Korrigiert
             playerBody.setLinvel({ x: direction.x, y: playerBody.linvel().y, z: direction.z });
+        }
+
+        // Jump-Count reset, wenn auf Boden
+        if (playerMesh.position.y >= 25) {
+            jumpCount = 0;
         }
 
         // Kamera-Update
