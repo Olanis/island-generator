@@ -5,6 +5,7 @@ let scene, camera, renderer, islandMesh, seaMesh, groundMesh, controls, isRotati
 let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false, jumpPressed = false;
 const moveSpeed = 6; // Doppelt so schnell
 let isFullscreen = false, rightMouseDown = false, lastMouseX = 0, cameraRotationY = 0;
+let jumpCount = 0; // Doppelsprung: max 2
 
 // Rapier
 let RAPIER, world, islandBody, playerBody, groundBody;
@@ -205,6 +206,7 @@ function handleFullscreenChange() {
             playerBody.setLinearDamping(0.5);
             const playerColliderDesc = RAPIER.ColliderDesc.cuboid(0.5, 0.5, 0.25);
             world.createCollider(playerColliderDesc, playerBody);
+            jumpCount = 0; // Reset
         }
         if (controls) controls.enabled = false;
         renderer.setSize(window.innerWidth, window.innerHeight);
@@ -220,6 +222,7 @@ function handleFullscreenChange() {
             playerMesh = null;
             world.removeRigidBody(playerBody);
             playerBody = null;
+            jumpCount = 0;
         }
         if (controls) controls.enabled = true;
         camera.position.set(250, 250, 250);
@@ -241,8 +244,8 @@ function updateCameraPosition() {
 }
 
 function jumpPlayer() {
-    const isInWater = playerMesh.position.y < 0;
-    if (playerBody && !isInWater && Math.abs(playerBody.linvel().y) < 0.1) { // Nur Jump auf Boden
+    if (playerBody && jumpCount < 2) {
+        jumpCount++;
         const vel = playerBody.linvel();
         playerBody.setLinvel({ x: vel.x, y: 10, z: vel.z });
     }
@@ -292,6 +295,11 @@ function animate() {
         // Kontinuierliches Schwimmen im Wasser
         if (jumpPressed && isInWater) {
             playerBody.addForce({ x: 0, y: 3, z: 0 }, true); // Langsam nach oben schwimmen
+        }
+
+        // Jump-Count reset, wenn auf Boden
+        if (playerMesh.position.y >= 25) {
+            jumpCount = 0;
         }
 
         // Wasser-Eintritt: Fallgeschwindigkeit abschwächen
