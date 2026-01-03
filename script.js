@@ -5,7 +5,7 @@ let scene, camera, renderer, islandMesh, seaMesh, groundMesh, controls, isRotati
 let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false, jumpPressed = false;
 const moveSpeed = 6; // Doppelt so schnell
 let isFullscreen = false, rightMouseDown = false, lastMouseX = 0, cameraRotationY = 0;
-let jumpCount = 0; // Doppelsprung: max 2, aber erster muss auf Boden
+let jumpCount = 0; // Doppelsprung: max 2
 
 // Rapier
 let RAPIER, world, islandBody, playerBody, groundBody;
@@ -244,7 +244,8 @@ function updateCameraPosition() {
 }
 
 function jumpPlayer() {
-    if (playerBody && jumpCount < 2 && (playerMesh.position.y >= 25 || jumpCount < 1)) { // Erster Jump nur auf Boden, zweiter in Luft
+    if (playerBody && jumpCount < 2) {
+        if (jumpCount === 0 && Math.abs(playerBody.linvel().y) >= 0.1) return; // Erster Jump nur wenn still auf Boden
         jumpCount++;
         const vel = playerBody.linvel();
         playerBody.setLinvel({ x: vel.x, y: 10, z: vel.z });
@@ -297,8 +298,8 @@ function animate() {
             playerBody.addForce({ x: 0, y: 3, z: 0 }, true); // Langsam nach oben schwimmen
         }
 
-        // Jump-Count reset, wenn auf Boden
-        if (playerMesh.position.y >= 25) {
+        // Jump-Count reset, wenn auf Boden und still
+        if (Math.abs(playerBody.linvel().y) < 0.1 && playerMesh.position.y >= 25) {
             jumpCount = 0;
         }
 
